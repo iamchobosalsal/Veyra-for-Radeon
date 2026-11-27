@@ -1,6 +1,10 @@
 # Veyra for Radeon
 
-**Veyra를 기반으로 Radeon 지원을 개선한 비공식 수정판입니다. 원본 Veyra 프로젝트의 공식 배포판이 아닙니다. Radeon 사용자를 위한 파일이며 AMD 또는 NVIDIA의 공식 제품도 아닙니다.**
+**Radeon 환경에 맞춰 화질 처리·안정성·실행 구성을 추가 최적화한 Veyra 기반 비공식 포크입니다.**
+
+**원본 Veyra도 AMD/Radeon을 지원하며, [AMD용 설치 파일과 포터블 ZIP](https://github.com/Likely7/Veyra-NRVideo/releases/tag/v2.2.1)을 제공합니다.** 이 수정판은 원본의 Radeon 지원을 기반으로 NR 다중 레이어 처리와 NR·HDR·프레임 생성의 연동을 조정하고, Radeon용 실행 구성과 로컬 모델 연결을 정리한 버전입니다. 다중 레이어 NR 등 원본에 있던 기능의 기반과 기여는 원본 프로젝트에 있습니다.
+
+원본 Veyra 프로젝트의 공식 배포판이 아니며, AMD 또는 NVIDIA의 공식 제품도 아닙니다.
 
 이번 버전은 **1.0.0 · Radeon**입니다. Windows x64용 실험 버전이며, [Releases](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases)에서 프로그램과 대응 소스를 제공합니다.
 
