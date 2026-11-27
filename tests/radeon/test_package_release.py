@@ -98,12 +98,13 @@ class PackageTests(unittest.TestCase):
                     self.wrap(review=True)
                 path.write_bytes(data)
 
-    def test_fsr_exception_is_limited_to_three_exact_paths(self):
-        for name in pack.FSR_RUNTIME_FILES:
+    def test_fsr_exception_is_limited_to_four_exact_paths(self):
+        for name in pack.ALL_FSR_RUNTIME_FILES:
             pack.check_path(name)
         for name in ("runtime_local/amd/fidelityfx/unknown.dll", "runtime_local/amd/fidelityfx/settings.json",
                      "runtime_local/user-data-2.0.0/profile.json", "runtime_local/amd/fidelityfx/amd_fidelityfx_loader_dx12.dll.bak",
-                     "extra/" + pack.FSR_RUNTIME_FILES[0], "runtime_local/intel/experimental/libxess_fg.dll"):
+                     "extra/" + pack.FSR_RUNTIME_FILES[0], "runtime_local/intel/experimental/libxess_fg.dll",
+                     pack.OPEN_FSR_RUNTIME_FILE + ".bak", "extra/" + pack.OPEN_FSR_RUNTIME_FILE):
             with self.subTest(path=name), self.assertRaises(ValueError):
                 pack.check_path(name)
 
@@ -306,7 +307,7 @@ class PackageTests(unittest.TestCase):
         for name in pack.FSR_RUNTIME_FILES:
             self.add_file(name)
             with self.subTest(count=len([r for r in self.audit["files"] if r["path"] in pack.FSR_RUNTIME_FILES])):
-                with self.assertRaisesRegex(ValueError, "omit all three"):
+                with self.assertRaisesRegex(ValueError, "omit all four"):
                     self.wrap()
 
     def test_core_requires_truthful_explicit_omission_metadata(self):
@@ -338,6 +339,112 @@ class PackageTests(unittest.TestCase):
         path = self.wrap()
         self.rewrite_zip(path, lambda name, data: b"Full FSR included" if name.endswith("/CORE-PACKAGE.txt") else data)
         with self.assertRaisesRegex(ValueError, "invalid Core package notice"):
+            pack.inspect_bundle(path, "1.0.0", self.source)
+
+    def open_fsr_audit(self):
+        self.audit["files"] = [row for row in self.audit["files"] if row["path"] not in pack.FSR_RUNTIME_FILES]
+        for name in pack.FSR_RUNTIME_FILES:
+            (self.stage / name).unlink()
+        row = self.add_file(pack.OPEN_FSR_RUNTIME_FILE, b"source-built-open-fsr-fixture")
+        self.audit["optionalComponents"] = {"fidelityfx": {
+            "bundled": True, "implementation": "open-fsr3", "sha256": row["sha256"]}}
+        return row
+
+    def test_open_fsr_full_package_round_trip_contains_only_monolith(self):
+        self.open_fsr_audit()
+        path = self.wrap()
+        pack.inspect_bundle(path, "1.0.0", self.source)
+        with zipfile.ZipFile(path) as archive:
+            prefix = pack.stem("1.0.0") + "/versions/1.0.0/"
+            self.assertEqual({n for n in archive.namelist() if "/runtime_local/" in n},
+                             {prefix + pack.OPEN_FSR_RUNTIME_FILE})
+            self.assertFalse(any(n.endswith("CORE-PACKAGE.txt") for n in archive.namelist()))
+
+    def test_open_fsr_explicit_profile_and_bundled_declaration_are_required(self):
+        self.open_fsr_audit()
+        proper = self.audit["optionalComponents"]
+        for value in ({}, {"fidelityfx": {"bundled": True}},
+                      {"fidelityfx": {"bundled": False, "implementation": "open-fsr3"}},
+                      {"fidelityfx": {"bundled": True, "implementation": "unknown"}}):
+            self.audit["optionalComponents"] = value
+            for review in (False, True):
+                with self.subTest(value=value, review=review), self.assertRaises(ValueError):
+                    pack.validate_audit(self.audit, "1.0.0", self.source, review)
+        self.audit["optionalComponents"] = proper
+
+    def test_open_fsr_requires_monolith_row_and_exact_source_built_provenance(self):
+        row = self.open_fsr_audit()
+        component = self.audit["optionalComponents"]["fidelityfx"]
+        for value in (None, "", "not-a-hash", "f" * 64, 123):
+            component["sha256"] = value
+            for review in (False, True):
+                with self.subTest(value=value, review=review), self.assertRaisesRegex(ValueError, "provenance"):
+                    pack.validate_audit(self.audit, "1.0.0", self.source, review)
+        component["sha256"] = row["sha256"]
+        self.audit["files"].remove(row)
+        with self.assertRaisesRegex(ValueError, "missing audited"):
+            pack.validate_audit(self.audit, "1.0.0", self.source, False)
+
+    def test_open_fsr_rejects_every_mixed_modular_runtime(self):
+        self.open_fsr_audit()
+        for name in pack.FSR_RUNTIME_FILES:
+            row = self.add_file(name)
+            for review in (False, True):
+                with self.subTest(name=name, review=review), self.assertRaisesRegex(ValueError, "mixed runtimes"):
+                    pack.validate_audit(self.audit, "1.0.0", self.source, review)
+            self.audit["files"].remove(row)
+            (self.stage / name).unlink()
+
+    def test_modular_fsr_rejects_unannounced_open_monolith(self):
+        self.add_file(pack.OPEN_FSR_RUNTIME_FILE)
+        with self.assertRaisesRegex(ValueError, "mixed runtimes"):
+            self.wrap()
+
+    def test_core_rejects_open_monolith_even_with_omission_metadata(self):
+        self.core_audit()
+        self.add_file(pack.OPEN_FSR_RUNTIME_FILE)
+        for review in (False, True):
+            with self.subTest(review=review), self.assertRaisesRegex(ValueError, "omit all four"):
+                pack.validate_audit(self.audit, "1.0.0", self.source, review)
+
+    def test_open_fsr_keeps_stage_and_archive_byte_integrity(self):
+        self.open_fsr_audit()
+        dll = self.stage / pack.OPEN_FSR_RUNTIME_FILE
+        data = dll.read_bytes()
+        dll.unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.wrap()
+        dll.write_bytes(data + b"changed")
+        with self.assertRaisesRegex(ValueError, "stage file differs"):
+            self.wrap()
+        dll.write_bytes(data)
+        path = self.wrap()
+        self.rewrite_zip(path, lambda name, data: b"changed" if name.endswith("/" + pack.OPEN_FSR_RUNTIME_FILE) else data)
+        with self.assertRaisesRegex(ValueError, "archived bytes"):
+            pack.inspect_bundle(path, "1.0.0", self.source)
+
+    def test_open_fsr_manual_release_still_requires_file_rights_and_exact_source(self):
+        row = self.open_fsr_audit()
+        self.trust.update(repository="", publicKey="", installEnabled=False)
+        rights = row.pop("redistribution")
+        with self.assertRaisesRegex(ValueError, "redistribution"):
+            self.wrap(manual_prerelease=True)
+        row["redistribution"] = rights
+        self.source.write_bytes(b"wrong source revision")
+        with self.assertRaisesRegex(ValueError, "corresponding-source"):
+            self.wrap(manual_prerelease=True)
+
+    def test_open_fsr_archive_manifest_cannot_drop_or_forge_provenance(self):
+        self.open_fsr_audit()
+        path = self.wrap()
+        def remove_provenance(name, data):
+            if name.endswith("/package-manifest.json"):
+                audit = json.loads(data)
+                audit["optionalComponents"]["fidelityfx"].pop("sha256")
+                return pack.encode(audit)
+            return data
+        self.rewrite_zip(path, remove_provenance)
+        with self.assertRaisesRegex(ValueError, "provenance"):
             pack.inspect_bundle(path, "1.0.0", self.source)
 
     def test_existing_artifact_is_never_overwritten(self):

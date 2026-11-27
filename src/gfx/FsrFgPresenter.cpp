@@ -2,6 +2,7 @@
 
 #include "veyra/Log.h"
 #include "veyra/RuntimePaths.h"
+#include "veyra/gfx/FsrRuntimeSelection.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,7 +16,7 @@
 #ifdef VEYRA_HAS_FSR
 #include <ffx_api_loader.h>
 #include <ffx_framegeneration.h>
-#include <dx12/ffx_api_framegeneration_dx12.h>
+#include <dx12/ffx_api_dx12.h>
 #endif
 
 namespace veyra::gfx {
@@ -79,7 +80,7 @@ const char* returnName(ffxReturnCode_t code) {
     case FFX_API_RETURN_NO_PROVIDER: return "NO_PROVIDER";
     case FFX_API_RETURN_ERROR_MEMORY: return "ERROR_MEMORY";
     case FFX_API_RETURN_ERROR_PARAMETER: return "ERROR_PARAMETER";
-    case FFX_API_RETURN_PROVIDER_NO_SUPPORT_NEW_DESCTYPE: return "PROVIDER_NO_SUPPORT_NEW_DESCTYPE";
+    case static_cast<ffxReturnCode_t>(7): return "PROVIDER_NO_SUPPORT_NEW_DESCTYPE";
     default: return "OTHER";
     }
 }
@@ -91,6 +92,7 @@ struct FsrFgPresenter::Impl {
     uint64_t frameId = 0;
     uint32_t width = 0, height = 0, backBufferFormat = 0;
     bool failed = false, available = false;
+    bool openSource = false;
     std::string providerVersion;
 #ifdef VEYRA_HAS_FSR
     HMODULE loader = nullptr;
@@ -109,18 +111,33 @@ bool FsrFgPresenter::compiledIn() {
 #endif
 }
 
+bool FsrFgPresenter::mlCompiledIn() {
+#if defined(VEYRA_HAS_FSR) && defined(FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2)
+    return true;
+#else
+    return false;
+#endif
+}
+
 bool FsrFgPresenter::initializeIndependent(ID3D12Device* device, uint32_t width, uint32_t height,
                                          DXGI_FORMAT format, bool requireMl) {
 #ifdef VEYRA_HAS_FSR
     auto& p = *p_;
     if (!device || !width || !height || p.fgContext) return false;
     const auto root = std::filesystem::absolute(runtime::localDataDirectory() / "amd" / "fidelityfx");
-    const auto loaderPath = root / "amd_fidelityfx_loader_dx12.dll";
-    const auto providerPath = root / "amd_fidelityfx_framegeneration_dx12.dll";
+    const auto selection = findFsrRuntime(root);
+    p.openSource = selection.openSource;
+    if (!selection.frameGeneration || (requireMl && (!selection.mlFrameGeneration || !mlCompiledIn()))) {
+        log::error("fsr-fg", "requested FG runtime unavailable; the open FSR 3 runtime does not provide ML FG");
+        p.failed = true; return false;
+    }
+    p.failed = false; p.frameId = 0; p.providerVersion.clear();
+    const auto loaderPath = root / (p.openSource ? fsrOpenSourceLibrary : "amd_fidelityfx_loader_dx12.dll");
     // Absolute preloading makes provider discovery deterministic. Modules stay
     // resident, as in the existing integration; contexts are independently freed.
     p.loader = loadResidentModule(loaderPath);
-    const auto provider = loadResidentModule(providerPath);
+    const auto provider = p.openSource ? p.loader
+        : loadResidentModule(root / "amd_fidelityfx_framegeneration_dx12.dll");
     if (!p.loader || !provider) {
         log::error("fsr-fg", std::format("independent runtime load failed root={} win32={}", root.string(), GetLastError()));
         p.failed = true; return false;
@@ -154,7 +171,10 @@ bool FsrFgPresenter::initializeIndependent(ID3D12Device* device, uint32_t width,
     for (size_t i = 0; i < size_t(count); ++i) {
         const std::string_view name = names[i] ? names[i] : "unknown";
         log::info("fsr-fg", std::format("inventory id=0x{:X} name={} request={}", ids[i], name, family));
-        if (!selected && name.find(family) != std::string_view::npos) selected = ids[i];
+        const bool matches = p.openSource
+            ? ids[i] == fsrOpenFgProviderId && name == fsrOpenFgProviderVersion
+            : name.find(family) != std::string_view::npos;
+        if (!selected && matches) selected = ids[i];
     }
     if (!selected) {
         log::error("fsr-fg", std::format("requested FSR {} provider unavailable on this adapter; no version fallback", family));
@@ -163,13 +183,16 @@ bool FsrFgPresenter::initializeIndependent(ID3D12Device* device, uint32_t width,
     ffxOverrideVersion overrideVersion{};
     overrideVersion.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
     overrideVersion.versionId = selected;
+    ffxCreateBackendDX12Desc backend{};
+    backend.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
+    backend.device = device; backend.header.pNext = &overrideVersion.header;
+#ifdef FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATION_VERSION
     ffxCreateContextDescFrameGenerationVersion apiVersion{};
     apiVersion.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATION_VERSION;
     apiVersion.version = FFX_FRAMEGENERATION_VERSION;
     apiVersion.header.pNext = &overrideVersion.header;
-    ffxCreateBackendDX12Desc backend{};
-    backend.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
-    backend.device = device; backend.header.pNext = &apiVersion.header;
+    if (!p.openSource) backend.header.pNext = &apiVersion.header;
+#endif
     ffxCreateContextDescFrameGeneration desc{};
     desc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATION;
     desc.header.pNext = &backend.header;
@@ -188,14 +211,15 @@ bool FsrFgPresenter::initializeIndependent(ID3D12Device* device, uint32_t width,
     result = p.functions.Query(&p.fgContext, &actual.header);
     p.providerVersion = actual.versionName ? actual.versionName : "unknown";
     if (result != FFX_API_RETURN_OK || actual.versionId != selected ||
-        p.providerVersion.find(family) == std::string::npos) {
+        (p.openSource ? p.providerVersion != fsrOpenFgProviderVersion
+                      : p.providerVersion.find(family) == std::string::npos)) {
         log::error("fsr-fg", std::format("actual provider rejected query={} requested=0x{:X} actual=0x{:X} name={}", returnName(result), selected, actual.versionId, p.providerVersion));
         p.failed = true; return false;
     }
     p.width = width; p.height = height; p.backBufferFormat = desc.backBufferFormat;
     p.available = true;
-    log::info("fsr-fg", std::format("independent context provider={} id=0x{:X} extent={}x{} format={} swapchainContexts=0 generatedPerPair=1 guidance=estimated-video virtualCamera=1",
-        p.providerVersion, actual.versionId, width, height, int(format)));
+    log::info("fsr-fg", std::format("independent context provider={} id=0x{:X} runtime={} extent={}x{} format={} swapchainContexts=0 generatedPerPair=1 guidance=estimated-video virtualCamera=1",
+        p.providerVersion, actual.versionId, p.openSource ? "open-sdk-1.1.4" : "modular", width, height, int(format)));
     return true;
 #else
     (void)device; (void)width; (void)height; (void)format; (void)requireMl;
@@ -227,19 +251,50 @@ bool FsrFgPresenter::generate(ID3D12GraphicsCommandList* list, ID3D12Resource* c
     configure.frameGenerationEnabled = true; configure.frameID = p.frameId;
     configure.generationRect = {0, 0, int32_t(p.width), int32_t(p.height)};
     if (!check(p.functions.Configure(&p.fgContext, &configure.header), "Configure")) return false;
-    ffxDispatchDescFrameGenerationPrepareV2 prepare{};
-    prepare.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2;
-    prepare.commandList = list; prepare.frameID = p.frameId;
-    prepare.renderSize = {p.width, p.height}; prepare.motionVectorScale = {1, 1};
-    prepare.frameTimeDelta = std::isfinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : 16.6667f;
-    prepare.reset = reset; prepare.cameraNear = 0.1f; prepare.cameraFar = 1000.0f;
-    prepare.cameraFovAngleVertical = 1.0f; prepare.viewSpaceToMetersFactor = 1.0f;
-    // Video has estimated depth/motion, no engine camera. Use a stable virtual
-    // right-handed basis, not zero-length vectors, and label this limitation.
-    prepare.cameraUp[1] = prepare.cameraRight[0] = prepare.cameraForward[2] = 1.0f;
-    prepare.depth = makeResource(depth, FFX_API_RESOURCE_STATE_COMMON);
-    prepare.motionVectors = makeResource(motion, FFX_API_RESOURCE_STATE_COMMON);
-    if (!check(p.functions.Dispatch(&p.fgContext, &prepare.header), "PrepareV2")) return false;
+    const float frameTimeMs = std::isfinite(elapsedMs) && elapsedMs > 0 ? elapsedMs : 16.6667f;
+    // Both API generations receive the same guidance and stable virtual camera.
+    // Reset is also passed to the generation dispatch below (the legacy prepare
+    // reset field is explicitly unused by SDK 1.1.4).
+#ifdef FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2
+    if (!p.openSource) {
+        ffxDispatchDescFrameGenerationPrepareV2 prepare{};
+        prepare.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2;
+        prepare.commandList = list; prepare.frameID = p.frameId;
+        prepare.renderSize = {p.width, p.height}; prepare.motionVectorScale = {1, 1};
+        prepare.frameTimeDelta = frameTimeMs;
+        prepare.reset = reset; prepare.cameraNear = 0.1f; prepare.cameraFar = 1000.0f;
+        prepare.cameraFovAngleVertical = 1.0f; prepare.viewSpaceToMetersFactor = 1.0f;
+        prepare.cameraUp[1] = prepare.cameraRight[0] = prepare.cameraForward[2] = 1.0f;
+        prepare.depth = makeResource(depth, FFX_API_RESOURCE_STATE_COMMON);
+        prepare.motionVectors = makeResource(motion, FFX_API_RESOURCE_STATE_COMMON);
+        if (!check(p.functions.Dispatch(&p.fgContext, &prepare.header), "PrepareV2")) return false;
+    } else
+#endif
+    {
+        // SDK 1.1.4 requires this legacy descriptor pair. Keep the modern
+        // modular path above on V2 and suppress only this intentional use.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+        ffxDispatchDescFrameGenerationPrepareCameraInfo camera{};
+        camera.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_CAMERAINFO;
+        camera.cameraUp[1] = camera.cameraRight[0] = camera.cameraForward[2] = 1.0f;
+        ffxDispatchDescFrameGenerationPrepare prepare{};
+        prepare.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE;
+        prepare.header.pNext = &camera.header;
+        prepare.commandList = list; prepare.frameID = p.frameId;
+        prepare.renderSize = {p.width, p.height}; prepare.motionVectorScale = {1, 1};
+        prepare.frameTimeDelta = frameTimeMs;
+        prepare.unused_reset = reset; prepare.cameraNear = 0.1f; prepare.cameraFar = 1000.0f;
+        prepare.cameraFovAngleVertical = 1.0f; prepare.viewSpaceToMetersFactor = 1.0f;
+        prepare.depth = makeResource(depth, FFX_API_RESOURCE_STATE_COMMON);
+        prepare.motionVectors = makeResource(motion, FFX_API_RESOURCE_STATE_COMMON);
+        if (!check(p.functions.Dispatch(&p.fgContext, &prepare.header), "PrepareLegacy")) return false;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+    }
     ffxDispatchDescFrameGeneration dispatch{};
     dispatch.header.type = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION;
     dispatch.commandList = list; dispatch.frameID = p.frameId; dispatch.reset = reset;
@@ -253,7 +308,7 @@ bool FsrFgPresenter::generate(ID3D12GraphicsCommandList* list, ID3D12Resource* c
     if (!check(p.functions.Dispatch(&p.fgContext, &dispatch.header), "Generate")) return false;
     if (p.frameId < 3 || log::verboseFrameLogs())
         log::info("fsr-fg", std::format("independent dispatch frameId={} reset={} elapsedMs={} outputs=1 transfer={} extent={}x{}",
-            p.frameId, reset, prepare.frameTimeDelta, dispatch.backbufferTransferFunction, p.width, p.height));
+            p.frameId, reset, frameTimeMs, dispatch.backbufferTransferFunction, p.width, p.height));
     ++p.frameId;
     return true;
 #else

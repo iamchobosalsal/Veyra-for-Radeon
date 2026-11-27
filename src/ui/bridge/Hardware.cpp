@@ -7,6 +7,7 @@
 #include "veyra/gfx/AmfFrcBackend.h"
 #include "veyra/gfx/FsrSrBackend.h"
 #include "veyra/gfx/FsrFgPresenter.h"
+#include "veyra/gfx/FsrRuntimeSelection.h"
 #include "veyra/guidance/AmdOpticalFlow.h"
 
 namespace veyra::ui {
@@ -80,7 +81,7 @@ static QVariantMap scanEffectCapabilities() {
     const auto data = runtime::localDataDirectory();
     auto exists = [](const std::filesystem::path& path) { std::error_code ec; return std::filesystem::is_regular_file(path, ec); };
     const auto fsr = data / "amd/fidelityfx";
-    const bool fsrLoader = exists(fsr / "amd_fidelityfx_loader_dx12.dll");
+    const auto fsrRuntime = gfx::findFsrRuntime(fsr);
     // NVIDIA can supply NVOF; Radeon/Intel use the FidelityFX flow backend.
     const bool fgFlowCompiled = gpu.vendor == 0x10de || guidance::AmdOpticalFlow::compiledIn();
     QVariantMap out;
@@ -110,13 +111,13 @@ static QVariantMap scanEffectCapabilities() {
     const bool vfxSr = pipeline::VfxSrBackend::runtimeAvailable(nr.wstring());
     for (int q : {16, 17, 18, 19}) add("sr" + QString::number(q), H::Nvidia, vfxSr, QObject::tr("需要 NVIDIA RTX 显卡"));
     for (int q : {21, 23}) add("sr" + QString::number(q), H::NvidiaAmpere, vfxSr, QObject::tr("需要 NVIDIA RTX 30 及更新显卡"));
-    add("sr5", H::CrossVendor, fsrLoader && exists(fsr / "amd_fidelityfx_upscaler_dx12.dll"), QObject::tr("需要支持 DirectX 12 的硬件显卡"), gfx::FsrSrBackend::compiledIn());
+    add("sr5", H::CrossVendor, fsrRuntime.upscale, QObject::tr("需要支持 DirectX 12 的硬件显卡"), gfx::FsrSrBackend::compiledIn());
     add("anr", H::CrossVendor, ngx::AnrProvider::available(nr.wstring()), QObject::tr("需要支持 DirectX 12 的硬件显卡"));
     add("dlss", H::Nvidia, exists(nr / "nvngx_dlssg.dll"), QObject::tr("需要 NVIDIA RTX 显卡"));
     add("vfg", H::Vfg, pipeline::VfgBackend::runtimeAvailable(nr.wstring()), QObject::tr("需要 NVIDIA RTX 30 / 40 / 50（30 系为实验兼容）"));
     add("xess", H::CrossVendor, exists(data / "intel/experimental/libxess_fg.dll") && exists(data / "intel/experimental/libxell.dll"), QObject::tr("需要支持 DirectX 12 的硬件显卡"));
-    add("fsr3", H::CrossVendor, fsrLoader && exists(fsr / "amd_fidelityfx_framegeneration_dx12.dll"), QObject::tr("需要支持 DirectX 12 的硬件显卡"), gfx::FsrFgPresenter::compiledIn() && fgFlowCompiled);
-    add("fsr4", H::Fsr4, fsrLoader && exists(fsr / "amd_fidelityfx_framegeneration_dx12.dll"), QObject::tr("需要 AMD RX 9000"), gfx::FsrFgPresenter::compiledIn() && fgFlowCompiled);
+    add("fsr3", H::CrossVendor, fsrRuntime.frameGeneration, QObject::tr("需要支持 DirectX 12 的硬件显卡"), gfx::FsrFgPresenter::compiledIn() && fgFlowCompiled);
+    add("fsr4", H::Fsr4, fsrRuntime.mlFrameGeneration, QObject::tr("需要 AMD RX 9000"), gfx::FsrFgPresenter::mlCompiledIn() && fgFlowCompiled);
     // AMD FRC uses the AMF runtime the AMD driver installs; nothing ships with Veyra.
     add("amdfrc", H::AmdFrc, gfx::AmfFrcBackend::runtimeInstalled(), QObject::tr("需要 AMD 显卡（驱动自带 AMF 运行库）"), gfx::AmfFrcBackend::compiledIn());
     add("hdr", H::CrossVendor,

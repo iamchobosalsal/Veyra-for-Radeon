@@ -2,9 +2,11 @@
 
 #include "veyra/Log.h"
 #include "veyra/RuntimePaths.h"
+#include "veyra/gfx/FsrRuntimeSelection.h"
 
 #include <filesystem>
 #include <format>
+#include <optional>
 #include <string>
 
 #ifdef VEYRA_HAS_FSR
@@ -57,7 +59,7 @@ const char* returnName(ffxReturnCode_t code) {
     case FFX_API_RETURN_NO_PROVIDER: return "NO_PROVIDER";
     case FFX_API_RETURN_ERROR_MEMORY: return "ERROR_MEMORY";
     case FFX_API_RETURN_ERROR_PARAMETER: return "ERROR_PARAMETER";
-    case FFX_API_RETURN_PROVIDER_NO_SUPPORT_NEW_DESCTYPE: return "PROVIDER_NO_SUPPORT_NEW_DESCTYPE";
+    case static_cast<ffxReturnCode_t>(7): return "PROVIDER_NO_SUPPORT_NEW_DESCTYPE";
     default: return "OTHER";
     }
 }
@@ -128,21 +130,23 @@ bool FsrSrBackend::initialize(ID3D12Device* device, uint32_t maxRenderWidth, uin
         FsrSrBackend& backend;
         ~InitGuard() { if (!backend.created()) backend.release(); }
     } initializationGuard{*this};
-    const auto root = runtime::localDataDirectory() / "amd" / "fidelityfx";
-    const auto loaderPath = std::filesystem::absolute(root / "amd_fidelityfx_loader_dx12.dll");
-    const auto providerPath = std::filesystem::absolute(root / "amd_fidelityfx_upscaler_dx12.dll");
-    if (!std::filesystem::exists(loaderPath)) {
-        log::warn("fsr-sr", std::format("loader missing at {}", loaderPath.string()));
+    const auto root = std::filesystem::absolute(runtime::localDataDirectory() / "amd" / "fidelityfx");
+    const auto selection = findFsrRuntime(root);
+    const auto loaderPath = root / (selection.openSource ? fsrOpenSourceLibrary : "amd_fidelityfx_loader_dx12.dll");
+    const auto providerPath = root / "amd_fidelityfx_upscaler_dx12.dll";
+    if (!selection.upscale) {
+        log::warn("fsr-sr", std::format("upscale runtime missing at {}", root.string()));
         return false;
     }
-    DirectoryGuard guard(root);
+    std::optional<DirectoryGuard> directoryGuard;
+    if (!selection.openSource) directoryGuard.emplace(root);
     p.loader = LoadLibraryExW(loaderPath.c_str(), nullptr,
                               LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (p.loader == nullptr) {
         log::error("fsr-sr", std::format("loader load failed win32={}", GetLastError()));
         return false;
     }
-    if (std::filesystem::exists(providerPath)) {
+    if (!selection.openSource) {
         p.provider=LoadLibraryExW(providerPath.c_str(), nullptr,
                        LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
         if(!p.provider)log::warn("fsr-sr", std::format("provider preload failed win32={}", GetLastError()));
@@ -156,13 +160,19 @@ bool FsrSrBackend::initialize(ID3D12Device* device, uint32_t maxRenderWidth, uin
     ffxCreateBackendDX12Desc backendDesc{};
     backendDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_DX12;
     backendDesc.device = device;
+    ffxOverrideVersion overrideVersion{};
+    overrideVersion.header.type = FFX_API_DESC_TYPE_OVERRIDE_VERSION;
+    overrideVersion.versionId = fsrOpenSrProviderId;
+    if (selection.openSource) backendDesc.header.pNext = &overrideVersion.header;
+#ifdef FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE_VERSION
     ffxCreateContextDescUpscaleVersion versionDesc{};
     versionDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE_VERSION;
     versionDesc.version = FFX_UPSCALER_VERSION;
+    if (!selection.openSource) backendDesc.header.pNext = &versionDesc.header;
+#endif
     ffxCreateContextDescUpscale upscaleDesc{};
     upscaleDesc.header.type = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
     upscaleDesc.header.pNext = &backendDesc.header;
-    backendDesc.header.pNext = &versionDesc.header;
     // evaluate() supplies no exposure texture. The SDK requires auto exposure
     // in that case, for both SDR and HDR input.
     upscaleDesc.flags = FFX_UPSCALE_ENABLE_AUTO_EXPOSURE |
@@ -171,7 +181,7 @@ bool FsrSrBackend::initialize(ID3D12Device* device, uint32_t maxRenderWidth, uin
     upscaleDesc.maxUpscaleSize = {maxUpscaleWidth, maxUpscaleHeight};
     upscaleDesc.fpMessage = fsrMessage;
     auto result = p.functions.CreateContext(&p.context, &upscaleDesc.header, nullptr);
-    if (result != FFX_API_RETURN_OK || p.context == nullptr) {
+    if (!selection.openSource && (result != FFX_API_RETURN_OK || p.context == nullptr)) {
         log::warn("fsr-sr", std::format("context with version desc failed result={}; retrying without it",
                                         returnName(result)));
         if(p.context){
@@ -194,6 +204,12 @@ bool FsrSrBackend::initialize(ID3D12Device* device, uint32_t maxRenderWidth, uin
     const auto queryResult = p.functions.Query(&p.context, &actual.header);
     p.providerVersion = queryResult == FFX_API_RETURN_OK && actual.versionName
         ? actual.versionName : "unknown";
+    if (selection.openSource && (queryResult != FFX_API_RETURN_OK ||
+        actual.versionId != fsrOpenSrProviderId || p.providerVersion != fsrOpenSrProviderVersion)) {
+        log::error("fsr-sr", std::format("open provider rejected query={} actual=0x{:X} name={}",
+            returnName(queryResult), actual.versionId, p.providerVersion));
+        return false;
+    }
     if (queryResult != FFX_API_RETURN_OK)
         log::warn("fsr-sr", "active provider query failed; version remains unknown");
     p.maxRenderWidth = maxRenderWidth;
@@ -201,8 +217,9 @@ bool FsrSrBackend::initialize(ID3D12Device* device, uint32_t maxRenderWidth, uin
     p.maxUpscaleWidth = maxUpscaleWidth;
     p.maxUpscaleHeight = maxUpscaleHeight;
     p.available = true;
-    log::info("fsr-sr", std::format("provider={} maxRender={}x{} maxUpscale={}x{} hdr={}",
+    log::info("fsr-sr", std::format("provider={} id=0x{:X} runtime={} maxRender={}x{} maxUpscale={}x{} hdr={}",
                                     p.providerVersion.empty() ? "unknown" : p.providerVersion,
+                                    actual.versionId, selection.openSource ? "open-sdk-1.1.4" : "modular",
                                     maxRenderWidth, maxRenderHeight, maxUpscaleWidth, maxUpscaleHeight, hdr));
     return true;
 #else

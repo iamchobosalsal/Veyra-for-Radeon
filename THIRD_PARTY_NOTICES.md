@@ -1,5 +1,43 @@
 # Third-party dependencies
 
+## Radeon preview 1.0.1 distribution scope (2026-11-27)
+
+`v1.0.1-radeon-preview.2` includes the source-built open FSR runtime described
+below and the independently implemented RIFE 4.22 Lite / DirectML 2X provider.
+The complete package inventory determines what is distributed. Later historical
+sections also describe upstream experiments and components that are not in this
+Radeon package; they are retained for attribution, not a claim that those binaries
+or models are bundled. NR model weights, NVIDIA inference runtimes, the signed
+FidelityFX SDK 2.3.0 DLL trio and FSR 4 ML components are excluded.
+
+## Source-built AMD FSR 3 API runtime (2026-11-27)
+
+AMD FidelityFX SDK 1.1.4, commit
+`c6efa6bf7f2027b3ec94f28578bb5965eabb9e55`, Copyright (C) 2024 Advanced Micro
+Devices, Inc., is used under its [MIT license](https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/c6efa6bf7f2027b3ec94f28578bb5965eabb9e55/LICENSE.txt).
+The public package builds the API, FSR 3.1.4 upscaler, optical flow and frame
+interpolation from source into one runtime:
+`runtime_local/amd/fidelityfx/amd_fidelityfx_dx12.dll`.
+It is 6,829,568 bytes, SHA256
+`784ee2f75109aba17e390fca9119dbfdb68b378e8063cb9cbbaa1dd25057a156`.
+The SDK's frame-generation provider reports internal version `1.1.3`.
+
+The matching `FidelityFX-1.1.4-open-api-corresponding-source.zip` has SHA256
+`42fe926a4bde859168598f256c12d4c1cfb2b2d08c15e77b00788326a647fcdf`.
+It includes the exact source, licenses, build recipe and modifications: Ninja/x64
+and PIX path handling, shader compiler thread/permutation handling, API target
+names, and disabling optional driver provider substitution. Shader algorithms
+are unchanged. The source-built runtime imports only Windows system DLLs.
+The shader compiler's open-source helpers retain their individual notices;
+external compiler/PIX development inputs retain their vendor licenses.
+The AMD MIT notice is retained in `licenses/AMD_FIDELITYFX_LICENSE.txt`.
+
+This runtime is distinct from SDK 2.3.0's signed loader/upscaler/framegeneration
+trio. None of those three DLLs or the FSR 4 ML implementation is included.
+The Veyra compatibility adapter and this dependency's corresponding source are
+provided with the GPL application. FSR FG and RIFE 2X remain separate selectable
+algorithms. Library compilation does not establish application/GPU validation.
+
 ## Experimental source-built Radeon NR adapter (2026-11-23/24)
 
 The optional Veyra provider and isolated OpenNR probes compile the MIT-licensed DLSSNR-AMD runtime and
@@ -535,7 +573,7 @@ Remote Play also depends on **OpenSSL, Opus, json-c, libevent, miniupnpc, curl, 
 
 </details>
 
-## AMD FidelityFX SDK 2.3.0 (experimental FSR frame generation and FSR upscaling)
+## Historical optional AMD FidelityFX SDK 2.3.0 integration (not bundled in Radeon preview 1.0.1)
 
 The player's AMD FSR backends (independent frame generation and upscaling in
 the enhancement graph) are written against the public FidelityFX
@@ -1272,10 +1310,10 @@ validates malformed cube LUTs, clears failed LUT selections, samples LUT texel
 centres and preserves premultiplied transparency. OBS's public colour-filter
 shader was consulted for the alpha contract; no OBS DLL is bundled here.
 
-## Independent RIFE / DirectML video FG local integration (2026-11-24)
+## Independent RIFE / DirectML video FG integration (2026-11-24; Radeon preview scope updated 2026-11-27)
 
 RIFE model and inference references: [Practical-RIFE](https://github.com/hzwer/Practical-RIFE), MIT (hzwer); [rife-ncnn-vulkan](https://github.com/nihui/rife-ncnn-vulkan), MIT (nihui); and the unmodified 4.22 Lite model export in [VapourSynth-RIFE-ncnn-Vulkan](https://github.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan), MIT (HolyWu). Fixed commits, paths and model hashes are recorded in `third_party/rife/UPSTREAM.json`.
 
-Veyra independently implements NCNN graph-to-DirectML translation, D3D12 warp/composition and the existing external-provider interface. It uses Microsoft DirectML 1.15.4 and the pinned, unmodified MIT DirectMLX build header. The package's runtime license/third-party notices and upstream RIFE license texts accompany the private runtime under `licenses/rife`. The unchanged upstream CPU Warp forward function is used only in an external NCNN CPU verification harness. NCNN at `061b4479baabda2bbd869108dc180b790a4365bc` is BSD-3-Clause and is not part of the player runtime.
+Veyra independently implements NCNN graph-to-DirectML translation, D3D12 warp/composition and the existing external-provider interface. It uses Microsoft DirectML 1.15.4 and the pinned, unmodified MIT DirectMLX build header. The public Radeon package retains the runtime license/third-party notices and upstream RIFE license texts under `licenses/rife`. The unchanged upstream CPU Warp forward function is used only in an external NCNN CPU verification harness. NCNN at `061b4479baabda2bbd869108dc180b790a4365bc` is BSD-3-Clause and is not part of the player runtime.
 
-SDK interface headers, model weights, vendor/runtime DLLs, archives and reference binaries remain outside source Git. The FG provider uses no NVIDIA inference binary/weights and no NeuralHub FG runtime. The retained interface export names are not a claim of NVIDIA VFG/DLSS-FG implementation. This is a local experimental integration, not a public release or general redistribution approval. Actual implementation, limitations and validation are recorded in `docs/RIFE_VIDEO_FG_2026-11-24.md`.
+SDK interface headers, model weights, vendor/runtime DLLs, archives and reference binaries remain outside source Git. The FG provider uses no NVIDIA inference binary/weights and no NeuralHub FG runtime. The retained interface export names are not a claim of NVIDIA VFG/DLSS-FG implementation. The Radeon preview includes the separately audited source-built provider and MIT 4.22 Lite model for RIFE 2X. This does not grant redistribution rights to unrelated vendor binaries or NR weights. Actual implementation, limitations and validation are recorded in `docs/RIFE_VIDEO_FG_2026-11-24.md`; current release validation is recorded separately.

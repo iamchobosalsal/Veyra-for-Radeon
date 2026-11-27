@@ -33,12 +33,14 @@ PLAYER = "veyra_qml_ui.exe"
 WORKER = "veyra_update_worker.exe"
 PROVIDER = "runtime/experimental/anr/nvngx_dlssg.dll"
 # Immutable SDK dependencies live beside the versioned player. These exact
-# three files are not user settings, despite the historical directory name.
+# runtime files are not user settings, despite the historical directory name.
 FSR_RUNTIME_FILES = (
     "runtime_local/amd/fidelityfx/amd_fidelityfx_loader_dx12.dll",
     "runtime_local/amd/fidelityfx/amd_fidelityfx_upscaler_dx12.dll",
     "runtime_local/amd/fidelityfx/amd_fidelityfx_framegeneration_dx12.dll",
 )
+OPEN_FSR_RUNTIME_FILE = "runtime_local/amd/fidelityfx/amd_fidelityfx_dx12.dll"
+ALL_FSR_RUNTIME_FILES = (*FSR_RUNTIME_FILES, OPEN_FSR_RUNTIME_FILE)
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 RESERVED = re.compile(r"(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)", re.IGNORECASE)
 
@@ -78,7 +80,7 @@ def check_path(name):
     if not safe_path(name):
         raise ValueError(f"unsafe package path: {name}")
     lower = name.lower()
-    if lower in FSR_RUNTIME_FILES:
+    if lower in ALL_FSR_RUNTIME_FILES:
         return
     parts = lower.split("/")
     if (set(parts) & {"runtime_local", "logs", ".git", ".cache", "user-data-2.0.0", "capture-profile", "media"}
@@ -114,19 +116,33 @@ def validate_optional_components(audit, names):
     if variant not in {"full", "core"} or not isinstance(components, dict):
         raise ValueError("invalid package variant or optional component declaration")
     fidelityfx = components.get("fidelityfx")
-    present = set(names) & set(FSR_RUNTIME_FILES)
+    present = set(names) & set(ALL_FSR_RUNTIME_FILES)
     if variant == "core":
         if (not isinstance(fidelityfx, dict) or fidelityfx.get("bundled") is not False
                 or not isinstance(fidelityfx.get("reason"), str)
                 or not 0 < len(fidelityfx["reason"].strip()) <= 500):
             raise ValueError("Core requires an explicit FidelityFX omission and reason")
         if present:
-            raise ValueError("Core must omit all three FidelityFX DLLs; partial or bundled runtimes are not allowed")
+            raise ValueError("Core must omit all four FidelityFX DLL paths; partial or bundled runtimes are not allowed")
     else:
         if fidelityfx is not None and (not isinstance(fidelityfx, dict) or fidelityfx.get("bundled") is not True):
             raise ValueError("FidelityFX omission requires the explicit Core package variant")
-        if present != set(FSR_RUNTIME_FILES):
-            raise ValueError("missing audited stage files: all three FidelityFX DLLs are required for full packages")
+        implementation = fidelityfx.get("implementation", "sdk-modular") if fidelityfx else "sdk-modular"
+        if implementation == "open-fsr3":
+            if OPEN_FSR_RUNTIME_FILE not in present:
+                raise ValueError("missing audited stage files: open-fsr3 requires its source-built FidelityFX DLL")
+            if present != {OPEN_FSR_RUNTIME_FILE}:
+                raise ValueError("open-fsr3 must include only its source-built FidelityFX DLL; mixed runtimes are not allowed")
+            provenance = fidelityfx.get("sha256")
+            if not isinstance(provenance, str) or not SHA.fullmatch(provenance):
+                raise ValueError("open-fsr3 requires explicit source-built FidelityFX SHA256 provenance")
+        elif implementation == "sdk-modular":
+            if OPEN_FSR_RUNTIME_FILE in present:
+                raise ValueError("the source-built FidelityFX DLL requires the explicit open-fsr3 implementation; mixed runtimes are not allowed")
+            if present != set(FSR_RUNTIME_FILES):
+                raise ValueError("missing audited stage files: all three FidelityFX DLLs are required for full packages")
+        else:
+            raise ValueError("unsupported FidelityFX implementation")
 
 
 def validate_audit(audit, version, source, review):
@@ -153,6 +169,9 @@ def validate_audit(audit, version, source, review):
             raise ValueError("invalid file hash/size")
         if row["path"].lower() == PROVIDER and audit.get("radeonSourceBuiltProviderSha256") != row["sha256"]:
             raise ValueError("the nvngx-named provider needs explicit source-built Radeon provenance")
+        if (row["path"].lower() == OPEN_FSR_RUNTIME_FILE
+                and audit["optionalComponents"]["fidelityfx"]["sha256"] != row["sha256"]):
+            raise ValueError("source-built FidelityFX provenance does not match the audited DLL hash")
         rights = row.get("redistribution", {})
         if not review and (rights.get("reviewed") is not True or not rights.get("license") or not rights.get("origin")):
             raise ValueError(f"file has no recorded redistribution review: {row['path']}")

@@ -11,6 +11,7 @@ namespace veyra::gfx {
 class FsrFgPresenter {
 public:
     static bool compiledIn();
+    static bool mlCompiledIn();
     FsrFgPresenter();
     ~FsrFgPresenter();
     FsrFgPresenter(const FsrFgPresenter&) = delete;

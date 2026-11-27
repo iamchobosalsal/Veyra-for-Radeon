@@ -3,7 +3,8 @@ const {join} = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const context = vm.createContext({});
-vm.runInContext(readFileSync(join(__dirname,'../../scripts/radeon/player/Integration.js'),'utf8'),context);
+// Exercise the shipped helper; the historical private-donor template is no longer appended.
+vm.runInContext(readFileSync(join(__dirname,'../../qml/Veyra/EffectSupport.js'),'utf8').replace(/^\.pragma library\s*/, ''),context);
 function api(amd, caps) {
   return {amdNrGpu:amd,uiLanguage:'ko',effectCapabilities:Object.fromEntries(caps.map(k=>[k,{available:true}])),
     preferences:{monitorGpu:'old'},gpuMonitorChoices:[{id:''},{id:'current'}],nrLayers:[{index:2,runtime:amd?2:4,intensity:1.4}],
@@ -18,6 +19,9 @@ assert.equal(nv.preferences.monitorGpu,'');assert.equal(nv.nrLayers[0].intensity
 assert.equal(context.gpuPresetName(nv),'NVIDIA NR + DLSS-FG');
 const amd=api(true,['nr4','anr']);context.reconcileGpu(amd);
 assert.equal(amd.nrLayers[0].runtime,4);assert.equal(amd.fgBackendName,'anr');assert.equal(amd.fgEnabled,false);
+assert.equal(context.gpuPresetName(amd),'Radeon NR + RIFE');
+const fsr=api(true,['nr4','anr','fsr3']);fsr.nrLayers[0].runtime=4;fsr.fgBackendName='fsr3';fsr.fgEnabled=true;fsr.preferences.monitorGpu='current';
+context.reconcileGpu(fsr);assert.equal(fsr.changed.length,0);assert.equal(fsr.fgBackendName,'fsr3');assert.equal(fsr.fgEnabled,true);
 const keep=api(false,['nr2','nr3','dlss','vfg']);keep.nrLayers[0].runtime=3;keep.fgBackendName='vfg';keep.fgEnabled=true;keep.preferences.monitorGpu='current';
 context.reconcileGpu(keep);assert.equal(keep.changed.length,0);assert.equal(keep.fgBackendName,'vfg');assert.equal(keep.fgEnabled,true);
 const missing=api(false,[]);missing.preferences.monitorGpu='';context.reconcileGpu(missing);

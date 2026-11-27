@@ -1,8 +1,8 @@
 # Building the Radeon community preview
 
-This is the modified source for `v1.0.0-radeon-preview.1`, based on upstream Veyra commit `671f9e963db63cbd7f912caa35c4caa3e0e60f76`. The original authors retain their copyrights. This snapshot records changes through 2026-11-27. It is not an upstream Veyra release.
+This is the modified source for `v1.0.1-radeon-preview.2`, based on the Radeon fork commit `e26c2659ff9931a3d1328b47acd6288a942d3f13` and its upstream Veyra base `671f9e963db63cbd7f912caa35c4caa3e0e60f76`. The original authors retain their copyrights. This snapshot records changes through 2026-11-27. It is not an upstream Veyra release.
 
-`SOURCE_SNAPSHOT.json` records source-file hashes and the accepted runtime identities. The snapshot excludes the uninstalled source-anchor experiment. Source receipt/hash matching is not a claim of byte-for-byte reproducible MSVC output.
+Release source/build manifests identify the exact shipped files. The source retains the accepted NR baseline and excludes the uninstalled source-anchor experiment. `ColorApply` is unchanged in this release. Source/hash correspondence is not a claim of byte-for-byte reproducible MSVC output. The open FSR library build has completed; application integration, GPU and packaging validation must be recorded separately before publication.
 
 ## Dependencies
 
@@ -14,7 +14,7 @@ The FFmpeg prefix must also provide the matching `libavfilter/avfilter.h` from t
 
 The current graph still has a build dependency on the NVIDIA Optical Flow SDK headers (`NvOFInterface/nvOpticalFlowCommon.h`), even though NVIDIA optical flow is disabled in this Radeon configuration. Supply the external 5.0.7 SDK directory. The sinks also require `nv-codec-headers` n13.0.19.0 (`include/ffnvcodec/nvEncodeAPI.h`). The portable update manifest code requires OpenSSL Crypto; the accepted build used OpenSSL 3.6.1. Supply matching headers and an import library and retain the corresponding runtime when packaging.
 
-Some optional interfaces still require separately licensed SDK headers to compile. Their presence in the build inputs does not grant permission to redistribute their binaries or models. The Core runtime deliberately excludes FidelityFX SDK 2.3.0 signed DLLs and NR model weights. Proprietary third-party source is not part of this repository.
+Some optional interfaces still require separately licensed SDK headers to compile. Their presence in the build inputs does not grant permission to redistribute their binaries or models. The public runtime includes the source-built SDK 1.1.4 open FSR API monolith and excludes FidelityFX SDK 2.3.0 signed DLLs, FSR 4 ML components and NR model weights. The SDK 2.3.0 headers below are external compilation inputs for the compatibility adapter; its signed runtime trio is not a packaging dependency. Proprietary third-party source is not part of this repository.
 
 ## Application configuration
 
@@ -35,7 +35,7 @@ cmake -S . -B build-radeon -G Ninja `
   -DVEYRA_AMF_SDK_ROOT=C:/deps/AMF-1.5.3/amf/public `
   -DVEYRA_DXC_EXECUTABLE=C:/deps/dxc/bin/x64/dxc.exe `
   -DVEYRA_RADEON_FORK=ON `
-  -DVEYRA_DISPLAY_VERSION=1.0.0-radeon-preview `
+  -DVEYRA_DISPLAY_VERSION=1.0.1-radeon-preview.2 `
   -DVEYRA_UPDATE_INSTALL_ENABLED=OFF `
   -DVEYRA_UPDATE_REPOSITORY= `
   -DVEYRA_UPDATE_PUBLIC_KEY= `
@@ -61,9 +61,40 @@ The accepted RIFE provider is a separate Veyra-built shared library, not the dir
 
 The NR host library's corresponding source is a separate dependency artifact. NR weights are not included and must not be inferred from the host library's MIT license.
 
+## Open FSR runtime
+
+Use the accompanying `FidelityFX-1.1.4-open-api-corresponding-source.zip`:
+
+- SDK commit: `c6efa6bf7f2027b3ec94f28578bb5965eabb9e55` (MIT).
+- Archive SHA256: `42fe926a4bde859168598f256c12d4c1cfb2b2d08c15e77b00788326a647fcdf`.
+- Runtime: `amd_fidelityfx_dx12.dll`, 6,829,568 bytes, SHA256 `784ee2f75109aba17e390fca9119dbfdb68b378e8063cb9cbbaa1dd25057a156`.
+
+The archive's `BUILD.md` and `source-manifest.json` provide the full recipe,
+source/tool hashes and patch. It contains the exact 822 source/build files used
+for this SDK build. Its five changes cover Ninja x64 selection, PIX paths,
+single-thread shader compilation/permutation outputs, API library names, and
+disabling optional driver provider substitution. Shader algorithms are unchanged.
+Build from the archive root in an MSVC x64 developer shell after supplying the
+documented PIX and shader-compiler development inputs:
+
+```powershell
+cmake -S ffx-api -B build -G Ninja -DCMAKE_BUILD_TYPE=Release `
+  -DCMAKE_EXE_LINKER_FLAGS=/machine:x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded `
+  -DFFX_API_BACKEND=DX12_X64 -DFFX_ALL=OFF
+cmake --build build --target amd_fidelityfx_dx12 --parallel 2
+```
+
+Copy `ffx-api/bin/amd_fidelityfx_dx12.dll` to the application version's exact
+relative path `runtime_local/amd/fidelityfx/amd_fidelityfx_dx12.dll`.
+Do not package the SDK 2.3.0 loader/upscaler/framegeneration DLL trio alongside it.
+The adapter uses the built-in FSR 3.1.4 upscaler and the SDK's frame-generation
+provider, whose internal version is `1.1.3`; that number is not a failed upgrade.
+It supports selection of FSR 3 FG separately from RIFE 2X. FSR 4 ML and its
+weights are absent and must not be advertised as supported by this package.
+
 ## Packaging and checks
 
-See [PACKAGING.md](PACKAGING.md) for audited runtime inventory, source archive matching and manual prerelease packaging. Never package a personal installation recursively. Core omission of FSR must be explicit in the manifest; a partial DLL set is not a valid package.
+See [PACKAGING.md](PACKAGING.md) for audited runtime inventory, source archive matching and manual prerelease packaging. Never package a personal installation recursively. Declare the `full` / `open-fsr3` implementation and exact monolith hash in the manifest; the old signed trio is absent. Keep automatic update checks, downloads and installation disabled for this manual prerelease.
 
 ```powershell
 python tests/radeon/test_package_release.py -q

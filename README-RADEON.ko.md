@@ -2,22 +2,25 @@
 
 **Veyra를 기반으로 Radeon 지원을 개선한 비공식 수정판입니다. 원본 Veyra 프로젝트의 공식 배포판이 아닙니다. Radeon 사용자를 위한 파일이며 AMD 또는 NVIDIA의 공식 제품도 아닙니다.**
 
-첫 공개 버전은 **1.0.0-radeon-preview.1 · Core 프리뷰**입니다. Windows x64용 실험 버전이며, [Releases](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases)에서 프로그램과 대응 소스를 제공합니다.
+이번 버전은 **1.0.1-radeon-preview.2 · Open FSR + RIFE 프리뷰**입니다. Windows x64용 실험 버전이며, [Releases](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases)에서 프로그램과 대응 소스를 제공합니다.
 
 ## 다운로드 전에 확인해 주세요
 
-**공개 ZIP에는 NR 모델 가중치와 FidelityFX FSR 실행 DLL이 포함되지 않습니다.** 따라서 압축만 풀면 개인 테스트 화면과 동일한 NR 효과가 바로 나오는 패키지는 아닙니다. NR은 필요한 모델을 사용자가 적법하게 별도로 준비했을 때 사용할 수 있으며, 모델이 없으면 사용할 수 없는 상태로 표시합니다. 모델의 취득·변환·사용 권한까지 이 프로젝트가 제공하는 것은 아닙니다.
+**FSR 3.1.4 초해상도·프레임 생성과 RIFE 2배 프레임 보간을 함께 제공합니다.** 공개 MIT 소스로 직접 빌드한 FSR 실행 라이브러리를 포함하며, 설정에서 **FSR 3 프레임 생성** 또는 **RIFE 2배**를 선택할 수 있습니다. 두 알고리즘을 동시에 중첩한다는 뜻은 아닙니다.
 
-| 기능 | Core 프리뷰 구성 |
+**NR 모델 가중치는 포함하지 않습니다.** NR은 필요한 모델을 사용자가 적법하게 별도로 준비했을 때 사용할 수 있으며, 모델이 없으면 사용할 수 없는 상태로 표시합니다. 모델의 취득·변환·사용 권한까지 이 프로젝트가 제공하는 것은 아닙니다.
+
+| 기능 | 이번 프리뷰 구성 |
 |---|---|
 | 4K 캡처 입력·재생·색상 조정 | 포함 |
 | Radeon Video HDR 처리 | 포함 |
-| RIFE 4.22 Lite / DirectML 프레임 보간 | 구현과 모델 포함 |
+| RIFE 4.22 Lite / DirectML 2배 프레임 보간 | 구현과 모델 포함 |
+| FSR 3.1.4 초해상도·FSR 3 프레임 생성 | MIT 소스로 빌드한 실행 라이브러리 포함 |
 | NR 여러 레이어·레이어별 강도 | 연결 코드와 호스트 포함, NR 모델 별도 |
-| FSR 초해상도·FSR 프레임 생성 | 관련 실행 DLL 미포함으로 사용 불가 |
+| FSR 4 ML 초해상도·ML 프레임 생성 | 미포함 |
 | NVIDIA 전용 실행 구성요소 | 미포함 |
 
-FSR이 없어도 4K 입력을 4K로 표시할 수 있습니다. RIFE 프레임 보간은 FSR 프레임 생성과 별도 기능입니다. RIFE 구현은 NVIDIA DLSS Frame Generation과 같은 구현을 뜻하지 않습니다.
+FSR과 RIFE는 서로 다른 프레임 생성 방식입니다. RIFE 구현은 NVIDIA DLSS Frame Generation과 같은 구현을 뜻하지 않습니다. FSR 라이브러리는 SDK 1.1.4의 FSR 3.1.4 구성으로, 내부 프레임 생성 모듈 버전이 `1.1.3`으로 표시될 수 있습니다.
 
 ## 실행
 
@@ -42,11 +45,11 @@ Radeon용 새 버전은 위 Releases에서 확인하고 **별도 폴더에 설�
 
 원본 업데이트는 변경 내용을 병합하고 Radeon에서 검증한 뒤 별도 릴리스로 제공합니다. 아직 나오지 않은 원본 버전과의 호환성까지 자동 보장하는 구조는 아닙니다.
 
-- 프로그램: `versions/1.0.0/`
+- 프로그램: `versions/1.0.1/`
 - 설정: `runtime_local/user-data-2.0.0/`
 - 별도로 준비한 로컬 NR 모델: `runtime_local/radeon/nr-assets/`
 
-프로그램 내부 버전 표시는 `1.0.0-radeon-preview`이며 GitHub 릴리스 태그는 `v1.0.0-radeon-preview.1`입니다. 첫 배포본에는 이전 설치 버전이 없어 자동 롤백 대상이 없습니다.
+릴리스 표시는 `1.0.1-radeon-preview.2`이며 GitHub 릴리스 태그는 `v1.0.1-radeon-preview.2`입니다. 이전 Core 프리뷰와 별도 폴더에 설치하고 기존 설정을 보관해 주세요. 이번 변경에서 기존 `ColorApply` 색상 처리 코드는 변경하지 않았습니다.
 
 ## 원본 프로젝트에 감사드립니다
 
@@ -58,6 +61,6 @@ Radeon용 새 버전은 위 Releases에서 확인하고 **별도 폴더에 설�
 
 원본 Veyra의 [GPLv3 라이선스](LICENSE)와 [서드파티 고지](THIRD_PARTY_NOTICES.md)를 유지합니다. 수정 소스와 [빌드 안내](docs/radeon/BUILD_PUBLIC.md), 배포 파일별 라이선스·출처 목록을 제공합니다. 외부 라이브러리와 모델은 각 라이선스가 적용되며 Veyra의 GPL이 모든 자산의 배포를 허용하는 것은 아닙니다.
 
-이 Core 프리뷰에서 제외한 NR 모델의 공개 재배포 권한은 확인되지 않았습니다. FSR SDK 2.3.0 실행 DLL도 자체 바이너리 배포 조건과 GPL 프로그램과의 결합 배포 조건을 별도로 확인해야 하므로 동봉하지 않습니다. 자동으로 해당 자산을 내려받거나 동의를 대신하지 않습니다.
+NR 모델의 공개 재배포 권한은 확인되지 않아 제외했습니다. FSR은 SDK 1.1.4의 MIT 소스로 빌드한 `amd_fidelityfx_dx12.dll` 한 개를 사용하며, 대응 소스·수정 패치·빌드 방법을 함께 제공합니다. SDK 2.3.0의 서명된 loader/upscaler/framegeneration DLL 3개와 FSR 4 ML 모델은 동봉하지 않습니다. 제외한 자산을 자동으로 내려받거나 동의를 대신하지 않습니다.
 
 버그 보고에는 버전·GPU·드라이버·입력 해상도/FPS·NR/FG/HDR 설정과 재현 순서를 적어 주세요. 계정 정보가 담긴 설정·로그는 공개하지 말아 주세요.

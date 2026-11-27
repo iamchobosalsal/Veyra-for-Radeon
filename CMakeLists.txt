@@ -980,6 +980,9 @@ if(VEYRA_FFMPEG_ROOT AND EXISTS "${VEYRA_FFMPEG_ROOT}/include/libavformat/avform
   target_include_directories(veyra_dovi_p5_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${FFMPEG_INCLUDE_DIRS})
   target_link_libraries(veyra_dovi_p5_probe PRIVATE d3d12 dxgi dxguid ${FFMPEG_LIBRARIES})
   add_dependencies(veyra_dovi_p5_probe veyra_shader_yuv_to_rgb)
+  # Explicit diagnostic target; never acquires a capture device or runs via CTest.
+  add_executable(veyra_fsr_open_probe EXCLUDE_FROM_ALL tests/radeon/FsrOpenRuntimeProbe.cpp)
+  target_link_libraries(veyra_fsr_open_probe PRIVATE veyra_gfx)
   add_executable(veyra_fsr_dispatch_tests tests/integration/FsrFgDispatchTests.cpp)
   target_compile_features(veyra_fsr_dispatch_tests PRIVATE cxx_std_20)
   target_link_libraries(veyra_fsr_dispatch_tests PRIVATE veyra_gfx d3d12 dxgi dxguid)
