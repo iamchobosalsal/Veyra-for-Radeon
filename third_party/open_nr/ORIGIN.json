@@ -1,0 +1,14 @@
+{
+  "name": "DLSSNR-AMD",
+  "repository": "https://github.com/Overclockers/DLSSNR-AMD",
+  "commit": "191b97b54175d50c7ec5992b54322dd3eb0ef8ac",
+  "license": "MIT",
+  "copyright": "2026 mochizuki0323",
+  "sourceLocation": "External OPEN_NR_SOURCE checkout; not vendored",
+  "compiledComponents": ["windows/src/core/nr_runtime.cpp", "windows/src/core/nr_native_plan.cpp", "windows/src/pe/nr_pe_bridge.cpp", "windows/src/pe/nr_pe_interop.cpp", "windows/src/pe/nr_pe_log.cpp"],
+  "shaderSources": ["windows/shaders/rdna4", "windows/shaders/passes", "windows/shaders/passes/include/fsr1"],
+  "upstreamSourceModifications": [],
+  "veyraAdditions": ["src/pipeline/OpenNrBackend.cpp", "include/veyra/pipeline/OpenNrBackend.h", "src/pipeline/OpenNrRuntime.cpp", "src/pipeline/NrParityPass.cpp", "include/veyra/pipeline/NrParityPass.h", "scripts/radeon/build_open_nr.py", "scripts/radeon/stage_open_nr_runtime.py", "scripts/radeon/manage_open_nr_runtime.py", "scripts/radeon/verify_open_nr.py", "tests/radeon/open_nr"],
+  "excludes": ["NeuralHub", "Danielblnc Supermod", "ReShade addons", "RenoDX addon", "OptiScaler", "ACO binary replacement", "NVIDIA model redistribution"],
+  "status": "Optional released-player AMD ABI provider with NVIDIA parity codec; staged separately, inactive in the user app; new AMD inference/quality not validated"
+}

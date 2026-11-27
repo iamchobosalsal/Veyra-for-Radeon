@@ -1,0 +1,8 @@
+LIBRARY VeyraRifeVideoFg
+EXPORTS
+    NVSDK_NGX_D3D12_Init_Ext=VeyraRifeInit
+    NVSDK_NGX_D3D12_PopulateParameters_Impl=VeyraRifePopulate
+    NVSDK_NGX_D3D12_CreateFeature=VeyraRifeCreate
+    NVSDK_NGX_D3D12_EvaluateFeature=VeyraRifeEvaluate
+    NVSDK_NGX_D3D12_ReleaseFeature=VeyraRifeRelease
+    NVSDK_NGX_D3D12_Shutdown1=VeyraRifeShutdown

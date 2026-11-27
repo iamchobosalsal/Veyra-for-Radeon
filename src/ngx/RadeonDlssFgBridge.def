@@ -1,0 +1,8 @@
+LIBRARY VeyraRadeonDlssFgBridge
+EXPORTS
+    NVSDK_NGX_D3D12_Init_Ext=VeyraRadeonFgInit
+    NVSDK_NGX_D3D12_PopulateParameters_Impl=VeyraRadeonFgPopulate
+    NVSDK_NGX_D3D12_CreateFeature=VeyraRadeonFgCreate
+    NVSDK_NGX_D3D12_EvaluateFeature=VeyraRadeonFgEvaluate
+    NVSDK_NGX_D3D12_ReleaseFeature=VeyraRadeonFgRelease
+    NVSDK_NGX_D3D12_Shutdown1=VeyraRadeonFgShutdown

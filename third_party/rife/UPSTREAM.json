@@ -1,0 +1,46 @@
+{
+  "purpose": "Independent local RIFE video frame interpolation; assets remain outside Git",
+  "implementation": "Veyra DirectML FP16 graph translator, D3D12 warp/composition, external-provider adapter",
+  "model": {
+    "repository": "https://github.com/styler00dollar/VapourSynth-RIFE-ncnn-Vulkan",
+    "commit": "c3ec6aabc07c8fa37a4f58d7fed9e2ad1fc1b13f",
+    "directory": "models/rife-v4.22_lite_ensembleFalse",
+    "license": "MIT",
+    "files": {
+      "flownet.bin": "792da5d62937199886bf8bb781ab8e0eddf663854d57e4a43cd7b32e4e81b29b",
+      "flownet.param": "091119e19a5891a5477de8f90b3c9e979baece5ee57c27d4e4138a6cc2552cc3"
+    },
+    "modifications": "None; unmodified NCNN export parsed at runtime",
+    "originalModelRepository": "https://github.com/hzwer/Practical-RIFE",
+    "originalModelLicenseCommit": "bbfd2ea90910789a860ea3e2b32a240cd577b75e"
+  },
+  "algorithmReference": {
+    "repository": "https://github.com/nihui/rife-ncnn-vulkan",
+    "commit": "a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7",
+    "license": "MIT",
+    "filesConsulted": ["src/rife.cpp", "src/rife.h", "src/warp.cpp", "src/rife_ops.h"],
+    "adaptation": "Model execution and warping contract consulted; the external CPU reference reuses the unchanged CPU Warp forward function. Product inference is independently implemented using DirectML/D3D12."
+  },
+  "directML": {
+    "package": "Microsoft.AI.DirectML",
+    "version": "1.15.4",
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.ai.directml/1.15.4/microsoft.ai.directml.1.15.4.nupkg",
+    "archiveSha256": "4e7cb7ddce8cf837a7a75dc029209b520ca0101470fcdf275c1f49736a3615b9",
+    "license": "Package LICENSE.txt and ThirdPartyNotices.txt retained with local runtime"
+  },
+  "directMLX": {
+    "repository": "https://github.com/microsoft/DirectML",
+    "commit": "8700779fe7a09ea7a007cf3d7ab4293c78e41017",
+    "path": "Libraries/DirectMLX.h",
+    "license": "MIT",
+    "modifications": "None; external build-only header"
+  },
+  "cpuReferenceOnly": {
+    "repository": "https://github.com/Tencent/ncnn",
+    "commit": "061b4479baabda2bbd869108dc180b790a4365bc",
+    "license": "BSD-3-Clause",
+    "runtimeUse": false
+  },
+  "providerInterface": "Existing external NGX SDK headers at build time only. Export names preserve Veyra's provider ABI; no NVIDIA inference binary or weights are used by this FG provider.",
+  "distribution": "Local experimental package only; no public release performed"
+}
