@@ -197,7 +197,14 @@ QVariantMap QmlPlayerBridge::nodeTimings() const {
     QVariantMap out;
     auto publish = [&](uint32_t i, const QString& state, std::optional<Stage> stage) {
         QVariantMap item{{"state", state}, {"ms", 0.0}, {"samples", QVariant::fromValue<qulonglong>(0)}};
-        if (state == QLatin1String("failed")) item["reason"] = uiText(snapshot.backendWarning);
+        if (state == QLatin1String("failed")) {
+            item["reason"] = uiText(snapshot.backendWarning);
+            const auto& effect=c.nodes[i];
+            if(effect.type==engine::EffectType::NrEnhance&&effect.nr.runtime==engine::NrRuntime::LmxxfAmd){
+                const auto model=nrModelAvailability(effect.nr.model.performance);
+                if(!model.value("available").toBool())item["reason"]=model.value("reason");
+            }
+        }
         if (stage) {
             const auto& sample = flow.gpuTiming[size_t(*stage)];
             if (live && sample.samples > 0 && sample.mean && std::isfinite(*sample.mean) && *sample.mean >= 0.0) {
@@ -221,7 +228,8 @@ QVariantMap QmlPlayerBridge::nodeTimings() const {
         QString waiting = live ? QStringLiteral("pending") : QStringLiteral("stopped");
         switch (n.type) {
         case engine::EffectType::NrEnhance:
-            if (nrRejected) waiting = QStringLiteral("failed");
+            if(n.enabled&&n.nr.runtime==engine::NrRuntime::LmxxfAmd&&!nrModelAvailability(n.nr.model.performance).value("available").toBool())waiting=QStringLiteral("failed");
+            else if (nrRejected) waiting = QStringLiteral("failed");
             else if (n.enabled && enabledNr < diagnostics::kTimedNrLayers) stage = diagnostics::nrLayerStage(enabledNr);
             if (n.enabled) ++enabledNr;
             break;

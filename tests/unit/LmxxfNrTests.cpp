@@ -4,6 +4,7 @@
 #include "veyra/pipeline/GpuPassUtils.h"
 #include "veyra/gfx/D3D12DeviceContext.h"
 #include "veyra/gfx/CommandSlotRing.h"
+#include "../support/NrModelAssetFixtures.h"
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
@@ -14,8 +15,13 @@ int main(){
     gfx::D3D12DeviceContext ctx;Status st=Status::Ok;gfx::DeviceContextDesc desc{};desc.enableDebugLayer=true;
     if(!ctx.initialize(desc,st)){std::puts("FAIL D3D12 unavailable");return 2;}
     gfx::CommandSlotRing ring;if(!ring.initialize(ctx.device(),ctx.directQueue(),ctx.fence(),ctx.fenceEvent(),4,st))return 2;
-    const auto directory=std::filesystem::absolute("lmxxf-test-runtime");
-    std::filesystem::create_directories(directory/"assets");
+    const auto fakeModules=std::filesystem::absolute("lmxxf-test-runtime");
+    veyra::tests::nrassets::Scratch fixture;
+    const auto directory=fixture.root/"runtime";
+    std::filesystem::create_directory(directory);
+    for(const auto* name:{"LmxxfNrRuntime.dll","LmxxfNrRuntime-Original.dll"})
+        std::filesystem::copy_file(fakeModules/name,directory/name);
+    veyra::tests::nrassets::makeAssets(directory/"assets",true,true);
     pipeline::LmxxfNrBackend nr;
     check(!nr.open(directory,ctx.device(),ctx.directQueue(),0x10DE),"NVIDIA path does not load AMD runtime");
     check(!nr.open(directory/"missing",ctx.device(),ctx.directQueue(),0x1002),"missing runtime refuses NR");

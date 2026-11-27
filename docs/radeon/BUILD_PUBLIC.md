@@ -1,6 +1,6 @@
 # Building the Radeon community preview
 
-This is the modified source for `v1.0.1-radeon-preview.2`, based on the Radeon fork commit `e26c2659ff9931a3d1328b47acd6288a942d3f13` and its upstream Veyra base `671f9e963db63cbd7f912caa35c4caa3e0e60f76`. The original authors retain their copyrights. This snapshot records changes through 2026-11-27. It is not an upstream Veyra release.
+This is the modified source for `v1.0.0`, based on the Radeon fork commit `a4ccd7ac98c7aad89da6437fd513da19eccbc2d8` and its upstream Veyra base `671f9e963db63cbd7f912caa35c4caa3e0e60f76`. The original authors retain their copyrights. This snapshot records changes through 2026-11-27. It is not an upstream Veyra release.
 
 Release source/build manifests identify the exact shipped files. The source retains the accepted NR baseline and excludes the uninstalled source-anchor experiment. `ColorApply` is unchanged in this release. Source/hash correspondence is not a claim of byte-for-byte reproducible MSVC output. The open FSR library build has completed; application integration, GPU and packaging validation must be recorded separately before publication.
 
@@ -35,7 +35,7 @@ cmake -S . -B build-radeon -G Ninja `
   -DVEYRA_AMF_SDK_ROOT=C:/deps/AMF-1.5.3/amf/public `
   -DVEYRA_DXC_EXECUTABLE=C:/deps/dxc/bin/x64/dxc.exe `
   -DVEYRA_RADEON_FORK=ON `
-  -DVEYRA_DISPLAY_VERSION=1.0.1-radeon-preview.2 `
+  -DVEYRA_DISPLAY_VERSION=1.0.0 `
   -DVEYRA_UPDATE_INSTALL_ENABLED=OFF `
   -DVEYRA_UPDATE_REPOSITORY= `
   -DVEYRA_UPDATE_PUBLIC_KEY= `

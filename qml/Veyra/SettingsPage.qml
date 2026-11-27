@@ -1482,6 +1482,20 @@ VPage {
                             VButton { text: qsTr("打开目录"); ghost: true; onClicked: veyra.openLogFolder() }
                         }
                         VRow {
+                            objectName: "settings-nr-model-folder"
+                            visible: veyra.nrModelAssets.managed
+                            label: veyra.uiLanguage === "ko" ? "로컬 NR 모델 폴더" : qsTr("Local NR model folder")
+                            hintBelow: true
+                            hint: veyra.nrModelAssets.busy ? (veyra.uiLanguage === "ko" ? "모델 파일 확인 중…" : qsTr("Checking model files…"))
+                                : veyra.nrModelAssets.error || ((veyra.uiLanguage === "ko"
+                                    ? "기존 NR 모델 폴더나 이전 Veyra 폴더를 선택하세요. 모델 파일은 복사하거나 다운로드하지 않습니다."
+                                    : qsTr("Select an existing NR model folder or an old Veyra folder. Model files are not copied or downloaded."))
+                                    + (veyra.nrModelAssets.directory ? "\n" + veyra.nrModelAssets.directory : ""))
+                            VButton { objectName: "settings-select-nr-model-folder"; enabled: !veyra.nrModelAssets.busy
+                                text: veyra.uiLanguage === "ko" ? "폴더 선택" : qsTr("Select folder")
+                                onClicked: veyra.chooseNrModelFolder() }
+                        }
+                        VRow {
                             label: qsTr("用户数据")
                             hint: veyra.dataDirectory
                             VButton { text: qsTr("打开目录"); ghost: true; onClicked: veyra.openDataFolder() }

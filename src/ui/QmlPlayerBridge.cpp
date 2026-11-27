@@ -119,6 +119,7 @@ QmlPlayerBridge::QmlPlayerBridge(engine::EngineController& engine, std::filesyst
         reported=next;emit effectCapabilitiesChanged();emit fgChoicesChanged();
     });
     capabilityTimer->start(2000);
+    QTimer::singleShot(0,this,&QmlPlayerBridge::refreshNrModelAssets);
     applyPreference(QStringLiteral("gpuPriority"));
     updateLiveCompanionCompat();
     applyPreference(QStringLiteral("prewarmEnhancement"));

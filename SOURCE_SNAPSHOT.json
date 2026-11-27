@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "purpose": "Corresponding application source for 1.0.1-radeon-preview.2",
-  "snapshotMethod": "Tracked public base e26c2659ff9931a3d1328b47acd6288a942d3f13 plus audited OpenFSR compatibility and packaging changes",
+  "purpose": "Corresponding application source for 1.0.0",
+  "snapshotMethod": "Tracked public 1.0.1 base plus NR model validation, local model selection and verified 1.0.0 release reset",
   "binaryReproducibility": "Application rebuilt from this snapshot with recorded external inputs; no claim of byte-identical MSVC reproducibility",
   "overrides": [
     {
@@ -68,7 +68,7 @@
     },
     "VEYRA_DISPLAY_VERSION": {
       "type": "STRING",
-      "value": "1.0.1-radeon-preview.2"
+      "value": "1.0.0"
     },
     "VEYRA_DLSS_SDK_ROOT": {
       "type": "PATH",
@@ -213,8 +213,8 @@
     },
     {
       "path": "CMakeLists.txt",
-      "size": 151654,
-      "sha256": "76df917a2dd805238c270bae589d7774979902814ba62300c9d4da932c88f400"
+      "size": 151965,
+      "sha256": "ba711b4e6820f7eda7704c2872b0abfbaeb870266152c0db2d652eabfacb7e3c"
     },
     {
       "path": "CMakePresets.json",
@@ -228,13 +228,13 @@
     },
     {
       "path": "README-RADEON.ko.md",
-      "size": 6386,
-      "sha256": "f8a695fa9f5f2b1753fe10b56b15a7c66433a82049abc3e69075f75fe89bc645"
+      "size": 10612,
+      "sha256": "a47af0a3d3e1628e6b4a41c4601f3f1622677c696da98b93194d7a1735233ef9"
     },
     {
       "path": "README.md",
-      "size": 6386,
-      "sha256": "f8a695fa9f5f2b1753fe10b56b15a7c66433a82049abc3e69075f75fe89bc645"
+      "size": 10612,
+      "sha256": "a47af0a3d3e1628e6b4a41c4601f3f1622677c696da98b93194d7a1735233ef9"
     },
     {
       "path": "README_CN.md",
@@ -248,8 +248,8 @@
     },
     {
       "path": "RELEASE-RADEON.ko.md",
-      "size": 3674,
-      "sha256": "6a10345e0aadf357cd3cf600e3a1325d18f9e656ea58513f80f521668a396672"
+      "size": 4249,
+      "sha256": "6c343ddca1b960acb6f5e5473066bdd4f6993a8db76067327d78a286369cb4c1"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -757,9 +757,44 @@
       "sha256": "5b4b3a136a0b9f875f05aa62a58b34a936f97c6865a3d1c10f1bc66615c85f90"
     },
     {
+      "path": "docs/images/nr-comparison/front-normal.png",
+      "size": 9269209,
+      "sha256": "5336c7a38e335c7b4e159496f1f254ffff85c9126d12ed67c0f78c96d38470c7"
+    },
+    {
+      "path": "docs/images/nr-comparison/front-nr-layer-1.png",
+      "size": 10445217,
+      "sha256": "4d85180185871cf418bffe69623256d481855aaa68f9de841314fdf086c1b6a5"
+    },
+    {
+      "path": "docs/images/nr-comparison/front-nr-layer-2.png",
+      "size": 10546576,
+      "sha256": "7b35d31091220bf4abbaab6b90202f791592127f5a9ed8aeab9542277fdc0f4b"
+    },
+    {
+      "path": "docs/images/nr-comparison/front-nr-layer-3.png",
+      "size": 10597156,
+      "sha256": "f66f643f11a65f0c95c70841030f564cd4463d879d940391b041b0f935e5152b"
+    },
+    {
+      "path": "docs/images/nr-comparison/rear-normal.png",
+      "size": 9697957,
+      "sha256": "077749b840791fa06efede8c6a9473c5a3dc63dde93da8b84e60161c55898ede"
+    },
+    {
+      "path": "docs/images/nr-comparison/rear-nr-layer-1.png",
+      "size": 10378600,
+      "sha256": "ac648868ff9ac8366c7ef53137c0146d314324dea05025d9b27add2c247e13ab"
+    },
+    {
+      "path": "docs/images/nr-comparison/rear-nr-layer-2.png",
+      "size": 10626098,
+      "sha256": "e390b698f611adf10fd56b08f700c163ad0128b3acf8525d3e5a994694b4493c"
+    },
+    {
       "path": "docs/radeon/BUILD_PUBLIC.md",
-      "size": 8402,
-      "sha256": "b427fc23a04eb37b311b2d8e7590f7c0df6c93a967170a16ba2d123180efd1ba"
+      "size": 8368,
+      "sha256": "92abcaafd7a6c30518a43a5f7bf1220bef7c2657ee6db4bdfa4a66490a5c3dd1"
     },
     {
       "path": "docs/radeon/FSR_OPEN_VALIDATION.md",
@@ -768,8 +803,13 @@
     },
     {
       "path": "docs/radeon/PACKAGING.md",
-      "size": 8703,
-      "sha256": "3982a7bd4b59eeed3c4b5b989658b48a6354b7f15c8885d318533124c2e6116f"
+      "size": 9206,
+      "sha256": "d2fdb153e9a7e377897054a097bf228cf515f648e7510b8008309e46f1c2972c"
+    },
+    {
+      "path": "docs/radeon/RELEASE_1.0.0_VALIDATION.md",
+      "size": 5506,
+      "sha256": "c71d053040ba491cbac065130f97545680843ba94c3b94c45bf753e31dffd489"
     },
     {
       "path": "i18n/catalog.json",
@@ -805,6 +845,11 @@
       "path": "include/veyra/ThunkHook.h",
       "size": 1862,
       "sha256": "42270ac8039c30595899f26e97481070f746a840207597793c03cad3118ab212"
+    },
+    {
+      "path": "include/veyra/base/NrModelAssets.h",
+      "size": 1402,
+      "sha256": "f21b23426bd59b5268443bcbb9952bbb548a08bbfeb60f2e18e5ef3cfab5a2de"
     },
     {
       "path": "include/veyra/base/PortableFiles.h",
@@ -2248,8 +2293,8 @@
     },
     {
       "path": "include/veyra/ui/QmlPlayerBridge.h",
-      "size": 98228,
-      "sha256": "cc9008137ce0ed7ba0d0f8df3669c56f9b10a570974b51aa390db30adcfd1cdb"
+      "size": 98691,
+      "sha256": "a964a9813334853d15ad5c0e31e8f7f7042986a4522db2d9262b8b205f7500ba"
     },
     {
       "path": "include/veyra/ui/StartupMusic.h",
@@ -2703,8 +2748,8 @@
     },
     {
       "path": "qml/Veyra/NrLayerEditor.qml",
-      "size": 23905,
-      "sha256": "78263de29ea50ff5a25e435180c77fe98ae841000652d2c8bf06ae35a2e073e4"
+      "size": 25849,
+      "sha256": "2178acfe5a3ad928d87ed138317f9e569979e166db50ec6cb9b5613cc4819988"
     },
     {
       "path": "qml/Veyra/NrWebPad.qml",
@@ -2818,8 +2863,8 @@
     },
     {
       "path": "qml/Veyra/SettingsPage.qml",
-      "size": 97487,
-      "sha256": "cf52672488e2ba48b23926327a83778bf05fccb31a5529a78a4743395d86413c"
+      "size": 97279,
+      "sha256": "7c21d1c1d322f3f7fe84efef7c50ba829fdb1ae6d1ba8dbbaad4fddd023f8ead"
     },
     {
       "path": "qml/Veyra/SponsorPanel.qml",
@@ -6862,14 +6907,19 @@
       "sha256": "a1032dd871cfa47dd64395f669d15f6efc2a43cbd611b0a3767cb4039cf3684c"
     },
     {
+      "path": "src/base/NrModelAssets.cpp",
+      "size": 17858,
+      "sha256": "bcba9184d41122ab361a5efaf65456057f961a96c10f1a1568c7dd725f83774b"
+    },
+    {
       "path": "src/base/PortableUpdateManifest.cpp",
       "size": 9264,
       "sha256": "cc0c686747ff6e993a9a928f1041c58db51c6c2f3727a65516ea3c700f27e652"
     },
     {
       "path": "src/base/RuntimePaths.cpp",
-      "size": 2372,
-      "sha256": "2964342039ded94a2216fc3ea98d405ad2c213db82cacd20212fca266c581f96"
+      "size": 2442,
+      "sha256": "5834fce7b98eb6d836f107806ddad1e61c43cbfc31c4fafc4ebdb6b21ce5174b"
     },
     {
       "path": "src/base/ThunkHook.cpp",
@@ -7368,8 +7418,8 @@
     },
     {
       "path": "src/pipeline/LmxxfNrBackend.cpp",
-      "size": 11831,
-      "sha256": "145aeb649abb74673c02338c27b0fcfc0c0c91ccf5f72e391034ef10baa29e6c"
+      "size": 12011,
+      "sha256": "e007d69e19045609b8870f48fae7f8343903c44e66eed66b1c2d884f837efbc9"
     },
     {
       "path": "src/pipeline/NrHoldPass.cpp",
@@ -7703,8 +7753,8 @@
     },
     {
       "path": "src/ui/QmlPlayerBridge.cpp",
-      "size": 48320,
-      "sha256": "224c0ce4c37f258ff10fcfa4b50db4328f2a12f0b4a36f81924554524d347ff5"
+      "size": 48392,
+      "sha256": "56f97f1cbe54b9e14c7a72aa80b2c9d6fc4cd28748becaa8d382ce44c384caf6"
     },
     {
       "path": "src/ui/QmlPlayerBridge_p.h",
@@ -7763,8 +7813,8 @@
     },
     {
       "path": "src/ui/bridge/Chain.cpp",
-      "size": 59778,
-      "sha256": "5def386fe986ded86ac0f6ea47871dc5a3f43057ebc66ef349603cb722307c14"
+      "size": 60277,
+      "sha256": "61092136dd8cab2391b448456e783b6d8ffeb1834dd31d6ccde68b4f45def12c"
     },
     {
       "path": "src/ui/bridge/Colour.cpp",
@@ -7788,8 +7838,8 @@
     },
     {
       "path": "src/ui/bridge/Hardware.cpp",
-      "size": 18365,
-      "sha256": "00dece24264f58914a51e6421c2ea377fdcf54a1d91c4a3220a2fa2a57c650bd"
+      "size": 27974,
+      "sha256": "652fe3df675d9ec6341d176577c949d07df43530d5fd241923adf73888131af5"
     },
     {
       "path": "src/ui/bridge/Playback.cpp",
@@ -7818,8 +7868,8 @@
     },
     {
       "path": "src/ui/bridge/Status.cpp",
-      "size": 35535,
-      "sha256": "cfab36e5a013d4d9d33a6480e1bb975693df81c55ad3af3b1d3ab4a3d51aecb2"
+      "size": 36088,
+      "sha256": "7b613fc7cbdf6e4dae9df535b8e06e1a8e4f49b0751b7212f58e45c9b974ce02"
     },
     {
       "path": "src/ui/bridge/Subtitles.cpp",
@@ -8243,8 +8293,8 @@
     },
     {
       "path": "tests/integration/LmxxfNrRuntimeMetadataTests.cpp",
-      "size": 3429,
-      "sha256": "9f6bcde61ce857e20eaa90c01e454b0b6d66c4d0a882782a5cc7bb302c088be7"
+      "size": 4046,
+      "sha256": "82901f9925e9983054dba01f8050cc4690c3f24c61fc3a47509c89bbfa3b8831"
     },
     {
       "path": "tests/integration/MediaFileSourceTests.cpp",
@@ -8962,9 +9012,19 @@
       "sha256": "617bdc2067514ef904439ea86094a29d63f5bf9fec432a0b894cc121b8703fa8"
     },
     {
+      "path": "tests/radeon/NrIntegrationProbe.h",
+      "size": 14269,
+      "sha256": "eacda00c13eb308e3f80a186beb4f644425575510811ab09fe1b600cc550dc1d"
+    },
+    {
+      "path": "tests/radeon/NrModelAssetsTests.cpp",
+      "size": 10521,
+      "sha256": "d2501c57b82f257847b85827c6a6b0c48e9d27a0b9cef57075e418f70143d9c0"
+    },
+    {
       "path": "tests/radeon/NrStackQualityProbe.cpp",
-      "size": 7575,
-      "sha256": "79951a1b185e511804bac9f7fd78235b291449a8d6a897ca8763741066919bbc"
+      "size": 7717,
+      "sha256": "3bcfcaaa79c543dceb3607a0155b091d51ed34e7c6cf817012e55ba1a8fceddc"
     },
     {
       "path": "tests/radeon/NrStackRefineGpuTests.cpp",
@@ -8995,6 +9055,11 @@
       "path": "tests/radeon/RadeonPipelineProbe.cpp",
       "size": 16339,
       "sha256": "aa3348b88252c405008a1662bd6073ebbe81d0c51c9a3b67a64d725a7aed1fff"
+    },
+    {
+      "path": "tests/radeon/ReleaseFirstRunSmoke.qml",
+      "size": 6001,
+      "sha256": "0a4bdaaf8996f033a904eb1e6afd50dd93dff14ab58c39ed1156df4f6da008ca"
     },
     {
       "path": "tests/radeon/RifeDmlProbe.cpp",
@@ -9110,6 +9175,11 @@
       "path": "tests/screenshot-alpha/ScreenshotAlphaTests.cpp",
       "size": 19798,
       "sha256": "f9dade9b579723fd055df601ff5852852a9daf04d350f66e430561476567c876"
+    },
+    {
+      "path": "tests/support/NrModelAssetFixtures.h",
+      "size": 14397,
+      "sha256": "1f2afe2e9a65b91e288504bf3df60132a34d25ebc61c61759c57b450b05fb3ea"
     },
     {
       "path": "tests/unit/AdaptiveFgMultiplierTests.cpp",
@@ -9298,8 +9368,8 @@
     },
     {
       "path": "tests/unit/LmxxfNrTests.cpp",
-      "size": 7195,
-      "sha256": "ee102e60ad7f4b6fc98d7770746c1a08ad24c44ee74216ab8a565c9764b0c3a2"
+      "size": 7549,
+      "sha256": "e3618b40ac41b161a130170b6bb593be6726114248c5cbbb38ab57edc6731a50"
     },
     {
       "path": "tests/unit/LoggerTests.cpp",
@@ -10469,9 +10539,9 @@
   "compileSourceFilesVerified": 1053,
   "upstreamBaseCommit": "671f9e963db63cbd7f912caa35c4caa3e0e60f76",
   "buildArtifacts": {
-    "veyra_qml_ui.exe": "fcdcc5aa567ee75b00616cc719b47ebba63b5d754f8b18c12c7aec74d7df4008",
-    "veyra_portable_launcher.exe": "8890e785c083938bcce569853f528cb1de7d2d7d94ce264dac338cd007116e17",
-    "veyra_update_worker.exe": "29dc55c31951a3de4ffda6fb19e79a81879676508764f99795999625259d6a94"
+    "veyra_qml_ui.exe": "c50d90ca97c5e60606408ded9f72e1681269475768ea3aa7ba14628562c02c72",
+    "veyra_portable_launcher.exe": "9e9c8a204db04895b97817d9d5430b5e51e63849a545abce9fef2fc7e3b62a8d",
+    "veyra_update_worker.exe": "7e14d43747a86de45aae7f4fe3920dcd98739f73e3d96ad058037f374fd553c6"
   },
   "bundledOpenFsr": {
     "path": "FidelityFX-1.1.4-open-api-corresponding-source.zip",

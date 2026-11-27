@@ -39,6 +39,12 @@ ColumnLayout {
     signal removeRequested(int nodeIndex)
     signal orderEdited(bool enabled)
     readonly property bool amdNr: layerData.runtime === 4
+    readonly property var modelAssets: veyra.nrModelAssets
+    readonly property var modelAvailability: {
+        const assets = modelAssets
+        const caps = veyra.effectCapabilities
+        return veyra.nrModelAvailability(layerData.performance ?? true)
+    }
     readonly property string amdRuntimeLabel: {
         const choices = veyra.nrRuntimeChoices || []
         const choice = choices.find(entry => String(entry.id) === "4")
@@ -128,6 +134,30 @@ ColumnLayout {
             options: veyra.nrRuntimeChoices || [{id:"2",label:"RTX 20–50 · SF 310.9.16"},{id:"3",label:qsTr("RTX 50 · NVIDIA 原版")},{id:"4",label:qsTr("RX 7000 / 9000 · AMD NR（实验）")}]
             onPicked: id => editor.edited(editor.layerData.index, "runtime", Number(id))
         }
+    }
+    VRow {
+        objectName: "nr-model-folder-row"
+        visible: editor.amdNr && editor.modelAssets.managed
+        label: veyra.uiLanguage === "ko" ? "로컬 NR 모델" : qsTr("Local NR models")
+        hintBelow: true
+        hint: editor.modelAssets.busy ? (veyra.uiLanguage === "ko" ? "모델 파일 확인 중…" : qsTr("Checking model files…"))
+            : editor.modelAssets.error || (!editor.modelAvailability.available ? editor.modelAvailability.reason
+            : ((veyra.uiLanguage === "ko" ? "선택한 모델: " : qsTr("Selected model: ")) + editor.modelAvailability.model))
+            + (editor.modelAssets.directory ? "\n" + editor.modelAssets.directory : "")
+        Row {
+            spacing: 6
+            VButton { objectName: "nr-select-model-folder"; enabled: !editor.modelAssets.busy
+                text: veyra.uiLanguage === "ko" ? "폴더 선택" : qsTr("Select folder")
+                onClicked: veyra.chooseNrModelFolder() }
+            VButton { objectName: "nr-refresh-model-folder"; enabled: !editor.modelAssets.busy; ghost: true
+                text: veyra.uiLanguage === "ko" ? "다시 확인" : qsTr("Recheck")
+                onClicked: veyra.refreshNrModelAssets() }
+        }
+    }
+    Text {
+        visible: editor.amdNr && editor.modelAssets.managed && editor.modelAssets.restartRequired
+        Layout.fillWidth: true; wrapMode: Text.Wrap; color: Theme.t2; font.pixelSize: 11
+        text: veyra.uiLanguage === "ko" ? "새 모델 폴더를 실행 중인 NR에 적용하려면 앱을 재시작해 주세요." : qsTr("Restart the app to use the new model folder in the active NR pipeline.")
     }
     VRow {
         objectName: "nr-performance-row"

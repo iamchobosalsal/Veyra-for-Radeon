@@ -1,6 +1,6 @@
 # Radeon release preparation
 
-Current target: `v1.0.1-radeon-preview.2`, numeric package version `1.0.1`, based on Radeon fork commit `e26c2659ff9931a3d1328b47acd6288a942d3f13`. This manual prerelease includes both the open FSR 3 implementation and RIFE 2X. They are alternative selectable FG backends, not stacked generators. NR weights and FSR 4 ML components remain excluded.
+Current target: `v1.0.0`, numeric package version `1.0.0`, based on Radeon fork commit `a4ccd7ac98c7aad89da6437fd513da19eccbc2d8`. This manual prerelease includes both the open FSR 3 implementation and RIFE 2X. They are alternative selectable FG backends, not stacked generators. NR weights and FSR 4 ML components remain excluded.
 
 The helper does not publish, generate signing keys, modify an installation, or establish redistribution rights. Its checks prevent accidentally signing a donor package, upstream update, or personal runtime directory.
 
@@ -71,13 +71,12 @@ records. Preserve all notices; do not include personal NR models or settings.
 `ColorApply` remains unchanged from the prior Radeon source baseline.
 
 ```powershell
-python scripts/radeon/package_release.py wrap --stage STAGE_FULL --build MATCHED_BUILD --version 1.0.1 --source SOURCE.zip --output OUTPUT --manual-prerelease
-python scripts/radeon/package_release.py inspect --bundle OUTPUT/Veyra-Radeon-1.0.1-AMD-win64-portable.zip --version 1.0.1 --source SOURCE.zip --manual-prerelease
+python scripts/radeon/package_release.py wrap --stage STAGE_FULL --build MATCHED_BUILD --version 1.0.0 --source SOURCE.zip --output OUTPUT --manual-prerelease
+python scripts/radeon/package_release.py inspect --bundle OUTPUT/Veyra-Radeon-1.0.0-AMD-win64-portable.zip --version 1.0.0 --source SOURCE.zip --manual-prerelease
 ```
 
-Publish as the GitHub **pre-release** `v1.0.1-radeon-preview.2`. Install separately
-from the old Core preview; numeric layout is `versions/1.0.1/`. A display/tag suffix
-does not enable the stable updater. Packaging tests and real GPU validation are
+Publish as the GitHub **pre-release** `v1.0.0`. Install separately
+from the old Core preview; numeric layout is `versions/1.0.0/`. The `v1.0.0` tag does not enable the stable updater. Packaging tests and real GPU validation are
 separate requirements; no successful integration-test result is implied by this
 document or by the completed SDK library build.
 
@@ -106,3 +105,7 @@ No files are uploaded. For the signed full-release path, the maintainer reviews 
 ## Validation
 
 `python tests/radeon/test_package_release.py -q` exercises isolated synthetic fixtures. It verifies private-file exclusion, stale source/EXE/shader/worker rejection, ZIP tamper detection, repository/key binding, distinct fork marker, review-only refusal, source-built RIFE identity, non-overwriting output behavior, explicit manual-prerelease trust, retained public audit checks, Core all-or-none FSR omission and the full Open FSR single-DLL/hash contract, package notices, and refusal to sign manual prereleases as updates. It does not validate real video processing or license clearance.
+
+## NR first-run validation
+
+The public ZIP contains the NR hosts, not private weights. The bridge validates the selected mode and shared inference resources asynchronously. The folder chooser stores an absolute UTF-8 reference at the installed root `runtime_local/radeon/nr-assets-path.txt`; do not distribute that file. Missing or stale references must not be reported as ready. Metadata validation is not proof of successful inference: the release gate also exercises the real graph and first frame. See `RELEASE_1.0.0_VALIDATION.md`.

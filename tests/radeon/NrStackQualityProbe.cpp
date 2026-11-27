@@ -13,6 +13,7 @@
 extern "C" {
 #include <libavutil/frame.h>
 }
+#include "NrIntegrationProbe.h"
 using namespace veyra;
 namespace {
 void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}
@@ -110,5 +111,5 @@ int run(int argc,wchar_t** argv){
 }
 int wmain(int argc,wchar_t** argv){
     if(argc>1&&std::wstring_view(argv[1])==L"--amd-hip-preflight")return pipeline::amdhip::preflightMain(argc,argv);
-    try{return run(argc,argv);}catch(const std::exception& e){std::cerr<<"STACK_FAILED "<<e.what()<<std::endl;return 1;}
+    try{if(argc>1&&std::wstring_view(argv[1])==L"--integration")return veyra::test::nrIntegrationMain(argc-1,argv+1);return run(argc,argv);}catch(const std::exception& e){std::cerr<<"STACK_FAILED "<<e.what()<<std::endl;return 1;}
 }

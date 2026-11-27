@@ -1,5 +1,6 @@
 #include "veyra/RuntimePaths.h"
 #include "veyra/base/PortableLayout.h"
+#include "veyra/base/NrModelAssets.h"
 
 #include <windows.h>
 
@@ -51,12 +52,12 @@ std::filesystem::path userDataDirectory() {
 }
 std::filesystem::path radeonNrAssetsDirectory(const std::filesystem::path& bundled) {
 #ifdef VEYRA_RADEON_FORK
-    const auto& root = managedRoot();
-    if (!root.empty()) {
-        const auto shared = root / "runtime_local" / "radeon" / "nr-assets";
-        std::error_code error;
-        if (std::filesystem::is_directory(shared, error)) return shared;
-    }
+    std::string issue;
+    const auto selected=base::readNrModelAssetsReference(userDataDirectory()/"radeon/nr-assets-path.txt",&issue);
+    if(!selected.empty()||!issue.empty())return selected;
+    const auto shared=userDataDirectory()/"radeon/nr-assets";
+    std::error_code error;
+    if(std::filesystem::is_directory(shared,error))return shared;
 #endif
     return bundled;
 }

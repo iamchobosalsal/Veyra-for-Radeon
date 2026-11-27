@@ -2,7 +2,11 @@
 
 **Veyra를 기반으로 Radeon 지원을 개선한 비공식 수정판입니다. 원본 Veyra 프로젝트의 공식 배포판이 아닙니다. Radeon 사용자를 위한 파일이며 AMD 또는 NVIDIA의 공식 제품도 아닙니다.**
 
-이번 버전은 **1.0.1-radeon-preview.2 · Open FSR + RIFE 프리뷰**입니다. Windows x64용 실험 버전이며, [Releases](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases)에서 프로그램과 대응 소스를 제공합니다.
+이번 버전은 **1.0.0 · Radeon**입니다. Windows x64용 실험 버전이며, [Releases](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases)에서 프로그램과 대응 소스를 제공합니다.
+
+[**프로그램 ZIP 다운로드 · Windows x64**](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases/download/v1.0.0/Veyra-Radeon-1.0.0-AMD-win64-portable.zip) · [릴리스 설명 및 소스](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases/tag/v1.0.0)
+
+실행하려면 위 프로그램 ZIP을 받으세요. 저장소의 **Code → Download ZIP**과 `corresponding-source.zip`은 개발용 소스입니다.
 
 ## 다운로드 전에 확인해 주세요
 
@@ -27,8 +31,32 @@ FSR과 RIFE는 서로 다른 프레임 생성 방식입니다. RIFE 구현은 NV
 1. 프로그램 ZIP 전체를 **새 폴더**에 풉니다.
 2. 최상위 폴더의 **`Veyra.exe`**를 실행합니다.
 3. 캡처 장치와 오디오 입력을 선택합니다. 개인 장치 설정·계정·녹화 영상은 배포본에 포함하지 않습니다.
+4. NR을 사용하던 분은 **설정 → 정보 → 로컬 NR 모델 폴더 → 폴더 선택**에서 기존 프로그램 폴더 또는 모델 자산 폴더를 지정합니다. 파일 검사 결과와 누락 사유가 표시됩니다.
+5. NR 모델이 없는 새 설치에서는 NR을 사용할 수 없습니다. FSR와 RIFE 실행 구성은 ZIP에 포함됩니다. **DLL만 복사해서는 NR이 활성화되지 않습니다.**
+
+모델 연결은 파일 복사가 아니라 선택한 폴더의 위치를 저장하는 방식입니다. 연결한 기존 폴더를 삭제하거나 옮기면 다시 선택해야 합니다. 이미 NR이 실행 중일 때 다른 모델 폴더로 바꾼 경우 앱을 재시작해 적용합니다. 모델 누락 때문에 실패했던 상태에서는 올바른 폴더 연결 후 저장된 NR 설정으로 자동 재시도합니다. Small 성능 모드도 1080p 초기화에 Original 모델 파일이 필요하므로 기존 모델 폴더 전체를 선택해 주세요.
 
 Windows x64와 D3D12 지원 GPU 환경을 대상으로 합니다. 모든 Radeon 세대·드라이버·캡처보드 조합에서 검증한 버전은 아닙니다. 우선 NR/FG를 켜기 전 입력과 오디오가 정상인지 확인하고, 필요한 효과를 차례로 켜 주세요.
+
+## NR 레이어 비교
+
+**노말(NR 끔)·NR 레이어별 실제 플레이 화면**입니다. 이미지는 편집·재압축 없이 원본 PNG 그대로 올렸으며, 각 이미지를 누르면 전체 해상도로 볼 수 있습니다.
+
+각 화면은 별도로 촬영해 포즈·구도·촬영 시점이 조금 다릅니다. 레이어별 강도 등 세부 설정은 기록되지 않은 참고용 비교입니다.
+
+**정면: 노말 / NR 1·2·3레이어**
+
+| 노말 · NR 끔 | NR 1레이어 |
+|---|---|
+| [![정면 노말 · NR 끔](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-normal.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-normal.png) | [![정면 NR 1레이어](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-nr-layer-1.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-nr-layer-1.png) |
+| **NR 2레이어** | **NR 3레이어** |
+| [![정면 NR 2레이어](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-nr-layer-2.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-nr-layer-2.png) | [![정면 NR 3레이어](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-nr-layer-3.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/front-nr-layer-3.png) |
+
+**뒷모습: 노말 / NR 1·2레이어**
+
+| 노말 · NR 끔 | NR 1레이어 | NR 2레이어 |
+|---|---|---|
+| [![뒷모습 노말 · NR 끔](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/rear-normal.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/rear-normal.png) | [![뒷모습 NR 1레이어](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/rear-nr-layer-1.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/rear-nr-layer-1.png) | [![뒷모습 NR 2레이어](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/rear-nr-layer-2.png)](https://raw.githubusercontent.com/iamchobosalsal/Veyra-for-Radeon/main/docs/images/nr-comparison/rear-nr-layer-2.png) |
 
 ## 알려진 제한
 
@@ -45,11 +73,14 @@ Radeon용 새 버전은 위 Releases에서 확인하고 **별도 폴더에 설�
 
 원본 업데이트는 변경 내용을 병합하고 Radeon에서 검증한 뒤 별도 릴리스로 제공합니다. 아직 나오지 않은 원본 버전과의 호환성까지 자동 보장하는 구조는 아닙니다.
 
-- 프로그램: `versions/1.0.1/`
+- 프로그램: `versions/1.0.0/`
 - 설정: `runtime_local/user-data-2.0.0/`
-- 별도로 준비한 로컬 NR 모델: `runtime_local/radeon/nr-assets/`
+- 별도로 준비한 로컬 NR 모델: `runtime_local/radeon/nr-assets/` 또는 사용자가 선택한 기존 폴더
+- 선택한 모델 폴더 위치: `runtime_local/radeon/nr-assets-path.txt` (개인 로컬 파일, 배포본 제외)
 
-릴리스 표시는 `1.0.1-radeon-preview.2`이며 GitHub 릴리스 태그는 `v1.0.1-radeon-preview.2`입니다. 이전 Core 프리뷰와 별도 폴더에 설치하고 기존 설정을 보관해 주세요. 이번 변경에서 기존 `ColorApply` 색상 처리 코드는 변경하지 않았습니다.
+릴리스 표시는 `1.0.0`이며 GitHub 릴리스 태그는 `v1.0.0`입니다. 이전 공개 프리뷰를 정리하고 버전 번호를 1.0.0으로 다시 시작했습니다. 별도 폴더에 설치하고 기존 설정과 모델 폴더를 보관해 주세요. 기존 프리뷰 ZIP을 새 버전으로 취급하지 마세요.
+
+[1.0.0 검증 기록](docs/radeon/RELEASE_1.0.0_VALIDATION.md)에서 실제 확인한 범위와 한계를 확인할 수 있습니다.
 
 ## 원본 프로젝트에 감사드립니다
 

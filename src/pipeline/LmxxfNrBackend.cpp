@@ -2,6 +2,7 @@
 #include "veyra/pipeline/LmxxfNrBackend.h"
 #include "veyra/Log.h"
 #include "veyra/RuntimePaths.h"
+#include "veyra/base/NrModelAssets.h"
 #include "veyra/gfx/GpuSchedulingPriority.h"
 #include "veyra/pipeline/AmdHipPreflight.h"
 #include <atomic>
@@ -36,8 +37,11 @@ bool LmxxfNrBackend::open(const std::filesystem::path& directory, ID3D12Device* 
         log::error("amd-nr", error_); close(); return false;
     }
     const auto assets = runtime::radeonNrAssetsDirectory(directory / L"assets");
-    if (!assetsReady(assets.c_str())) {
-        error_ = "AMD NR Small model assets are incomplete; refusing silent fallback to the original model";
+    const auto modelAssets=base::inspectNrModelAssets(assets);
+    const auto& selectedModel=performance?modelAssets.smallModel:modelAssets.originalModel;
+    if (!selectedModel.ready || !assetsReady(assets.c_str())) {
+        error_ = std::string("AMD NR ")+(performance?"Small":"Original")+" model unavailable: "+
+            (selectedModel.ready?"runtime model manifest check failed":selectedModel.issue)+". Select the local NR model folder in Settings.";
         log::error("amd-nr", error_); close(); return false;
     }
     const auto getApi = reinterpret_cast<decltype(&LmxxfNrGetApi)>(GetProcAddress(module_, "LmxxfNrGetApi"));

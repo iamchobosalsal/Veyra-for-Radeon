@@ -129,6 +129,7 @@ class QmlPlayerBridge : public QObject {
     Q_PROPERTY(bool captureForceSdr READ captureForceSdr WRITE setCaptureForceSdr NOTIFY settingsChanged)
     Q_PROPERTY(bool amdNrGpu READ amdNrGpu CONSTANT)
     Q_PROPERTY(QVariantMap effectCapabilities READ effectCapabilities NOTIFY effectCapabilitiesChanged)
+    Q_PROPERTY(QVariantMap nrModelAssets READ nrModelAssets NOTIFY nrModelAssetsChanged)
     Q_PROPERTY(QVariantList nrRuntimeChoices READ nrRuntimeChoices NOTIFY effectCapabilitiesChanged)
     Q_PROPERTY(QVariantList srBackendChoices READ srBackendChoices NOTIFY effectCapabilitiesChanged)
     Q_PROPERTY(bool captureFlipVertical READ captureFlipVertical WRITE setCaptureFlipVertical NOTIFY settingsChanged)
@@ -671,6 +672,11 @@ public:
     Q_INVOKABLE void openDroppedUrls(const QList<QUrl>& urls);
     bool amdNrGpu() const;
     QVariantMap effectCapabilities() const;
+    QVariantMap nrModelAssets() const;
+    Q_INVOKABLE QVariantMap nrModelAvailability(bool performance) const;
+    Q_INVOKABLE void chooseNrModelFolder();
+    Q_INVOKABLE void importNrModelFolder(const QString& folder);
+    Q_INVOKABLE void refreshNrModelAssets();
     QVariantList nrRuntimeChoices() const;
     QVariantList srBackendChoices() const;
     // RTX Video SR family / tier helpers for the SR lists (see Enhancement.cpp).
@@ -1554,6 +1560,7 @@ signals:
     void settingsChanged();
     void fgChoicesChanged();
     void effectCapabilitiesChanged();
+    void nrModelAssetsChanged();
     void chainChanged();
     // A slider edits one group's values without touching the chain's structure,
     // labels or positions; only that group notifies (audit 2026-10-15 B1).
@@ -1645,6 +1652,7 @@ private:
     void tickPs5Control(bool force = false);
     // restart: replace a running session (another pairing, or the user asked).
     void startPs5Control(bool restart);
+    void checkNrModelFolder(const QString& folder, bool remember);
     void stopPs5Control();
     bool captureCardLive() const;
     void tickMoonlight();

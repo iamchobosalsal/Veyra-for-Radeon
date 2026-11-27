@@ -1,6 +1,7 @@
 // Real upstream modules and real D3D12 objects. No PrepareFrame/HIP inference.
 #include "veyra/pipeline/LmxxfNrBackend.h"
 #include "veyra/gfx/D3D12DeviceContext.h"
+#include "../support/NrModelAssetFixtures.h"
 #include <iostream>
 #include <cstdlib>
 #include <string_view>
@@ -34,7 +35,12 @@ int wmain(int argc,wchar_t** argv){
     _putenv_s("DLSS5_TEMPORAL_MODE","");
     std::filesystem::create_directories(scratch/L"assets");
     std::filesystem::copy_file(runtime/L"LmxxfNrRuntime.dll",scratch/L"LmxxfNrRuntime.dll");
-    check(!smallBackend.open(scratch,ctx.device(),ctx.directQueue(),0x1002,true)&&smallBackend.error().find("Small model assets")!=std::string::npos,"real missing Small assets fail before Create; no silent fallback");
+    check(!smallBackend.open(scratch,ctx.device(),ctx.directQueue(),0x1002,true)&&smallBackend.error().find("Small model unavailable")!=std::string::npos,"real missing Small assets fail before Create; no silent fallback");
+    std::filesystem::copy_file(runtime/L"LmxxfNrRuntime-Original.dll",scratch/L"LmxxfNrRuntime-Original.dll");
+    check(!original.open(scratch,ctx.device(),ctx.directQueue(),0x1002,false)&&original.error().find("Original model unavailable")!=std::string::npos,"real missing Original assets fail even when runtime export reports ready");
+    // Isolate the wrong-module contract from missing-assets admission.
+    // Synthetic metadata is sufficient: this branch must fail before Create/HIP.
+    veyra::tests::nrassets::makeAssets(scratch/L"assets",true,true);
     std::filesystem::copy_file(runtime/L"LmxxfNrRuntime-Original.dll",scratch/L"LmxxfNrRuntime.dll",std::filesystem::copy_options::overwrite_existing);
     check(!smallBackend.open(scratch,ctx.device(),ctx.directQueue(),0x1002,true)&&smallBackend.error().find("model module mismatch")!=std::string::npos,"actual swapped module refuses wrong model");
     check(original.open(runtime,ctx.device(),ctx.directQueue(),0x1002,false),"real module reopens after metadata teardown");original.close();

@@ -1,5 +1,6 @@
 // QML bridge: Chain responsibilities.
 #include "../QmlPlayerBridge_p.h"
+#include "veyra/base/NrModelAssets.h"
 
 namespace veyra::ui {
 // --- chain ------------------------------------------------------------------
@@ -377,6 +378,12 @@ QString QmlPlayerBridge::videoHdrStatus() const { return uiText(impl_->snapshot.
 // RTX Video HDR where the pipeline cannot honour them is refused with a reason,
 // not silently dropped.
 int QmlPlayerBridge::addEffect(const QString& type) {
+    const auto configureNewNr=[this](auto& layer){
+        if(layer.runtime!=engine::NrRuntime::LmxxfAmd||!effectGpu().rx9000)return;
+        layer.model.performance=base::nrPerformanceForNewLayer(layer.model.performance,
+            nrModelAvailability(true).value("available").toBool(),
+            nrModelAvailability(false).value("available").toBool());
+    };
     // The generic list entry means "add an available FG stage". A saved,
     // disabled NVIDIA choice must not make FSR/XeSS impossible to add on AMD.
     if(type==QLatin1String("frame-generation")&&
@@ -426,6 +433,7 @@ int QmlPlayerBridge::addEffect(const QString& type) {
             node.viewX = float(index % 4) * 260; node.viewY = float(index / 4) * 300;
             if (info->type == engine::EffectType::NrEnhance) {
                 node.nr.runtime = previous.nrRuntime; node.nr.lowLatencyPairing = previous.lowLatency;
+                configureNewNr(node.nr);
             }
             const uint32_t id = impl_->layout.nextId++; impl_->layout.ids[index] = id; impl_->layout.next[index] = 0;
             auto projected = std::make_unique<engine::EffectChain>();
@@ -541,6 +549,7 @@ int QmlPlayerBridge::addEffect(const QString& type) {
     if(wanted==engine::EffectType::NrEnhance){
         c.nodes[insertAt].nr.runtime=settings().nrRuntime;
         c.nodes[insertAt].nr.lowLatencyPairing=settings().lowLatency;
+        configureNewNr(c.nodes[insertAt].nr);
         impl_->selectedNr=int(insertAt);
     }
     // A new node lands below the others in node mode, in a stable column.

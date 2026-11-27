@@ -116,6 +116,7 @@ add_library(veyra_base STATIC
   src/base/NgxResult.cpp
   src/base/FileIdentity.cpp
   src/base/RuntimePaths.cpp
+  src/base/NrModelAssets.cpp
   src/base/ThunkHook.cpp
   # .cube parsing, the runtime LUT store and named colour looks: low level, no
   # D3D12, shared by the ingest pipeline and the settings/import paths.
@@ -139,6 +140,11 @@ add_executable(veyra_export_timeline_tests tests/unit/ExportTimelineTests.cpp)
 target_compile_features(veyra_export_timeline_tests PRIVATE cxx_std_20)
 target_link_libraries(veyra_export_timeline_tests PRIVATE veyra_base)
 veyra_apply_warnings(veyra_export_timeline_tests)
+
+# CPU-only NR model layout validation. Fixtures contain sparse dummy files only.
+add_executable(veyra_nr_model_assets_tests tests/radeon/NrModelAssetsTests.cpp)
+target_link_libraries(veyra_nr_model_assets_tests PRIVATE veyra_base)
+veyra_apply_warnings(veyra_nr_model_assets_tests)
 
 add_library(veyra_gfx STATIC
   src/gfx/GpuSchedulingPriority.cpp
