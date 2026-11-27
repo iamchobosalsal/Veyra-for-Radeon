@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "purpose": "Corresponding application source for 1.0.0",
-  "snapshotMethod": "Tracked public 1.0.1 base plus NR model validation, local model selection and verified 1.0.0 release reset",
-  "binaryReproducibility": "Application rebuilt from this snapshot with recorded external inputs; no claim of byte-identical MSVC reproducibility",
+  "purpose": "Corresponding application source for the repaired 1.0.0 release",
+  "snapshotMethod": "Public 1.0.0 base plus NR model connection and main-page recovery fixes; fullscreen changes cancelled",
+  "binaryReproducibility": "Built application and loose QML recorded by hash; no byte-identical MSVC reproducibility claim",
   "overrides": [
     {
       "path": "src/pipeline/EnhanceGraph.cpp",
@@ -16,7 +16,7 @@
     },
     {
       "path": "tests/radeon/NrStackQualityProbe.cpp",
-      "sha256": "79951a1b185e511804bac9f7fd78235b291449a8d6a897ca8763741066919bbc",
+      "sha256": "3bcfcaaa79c543dceb3607a0155b091d51ed34e7c6cf817012e55ba1a8fceddc",
       "reason": "Restore source predating uninstalled source-anchor diagnostic candidate"
     }
   ],
@@ -228,13 +228,13 @@
     },
     {
       "path": "README-RADEON.ko.md",
-      "size": 10612,
-      "sha256": "a47af0a3d3e1628e6b4a41c4601f3f1622677c696da98b93194d7a1735233ef9"
+      "size": 11453,
+      "sha256": "0f99520eb1f46defac719a43afe2dfa34069ad3b93a8862cea469bebe309157e"
     },
     {
       "path": "README.md",
-      "size": 10612,
-      "sha256": "a47af0a3d3e1628e6b4a41c4601f3f1622677c696da98b93194d7a1735233ef9"
+      "size": 11453,
+      "sha256": "0f99520eb1f46defac719a43afe2dfa34069ad3b93a8862cea469bebe309157e"
     },
     {
       "path": "README_CN.md",
@@ -243,13 +243,13 @@
     },
     {
       "path": "README_EN.md",
-      "size": 182,
-      "sha256": "4c1caa4c44440d8c33130e6a5684b9c1df179b56e949e775060b42056822aa17"
+      "size": 1719,
+      "sha256": "979d8e90a08286113c0144af75b18f96e019bdee41119374180a03c93957488f"
     },
     {
       "path": "RELEASE-RADEON.ko.md",
-      "size": 4249,
-      "sha256": "6c343ddca1b960acb6f5e5473066bdd4f6993a8db76067327d78a286369cb4c1"
+      "size": 5567,
+      "sha256": "144a2035236ea6c7621daa6b506ea29c6eba940253fa7696c01e0a529167afce"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -808,8 +808,8 @@
     },
     {
       "path": "docs/radeon/RELEASE_1.0.0_VALIDATION.md",
-      "size": 5506,
-      "sha256": "c71d053040ba491cbac065130f97545680843ba94c3b94c45bf753e31dffd489"
+      "size": 7183,
+      "sha256": "088642db44435aad74208c56314c7b7d7eddd2c4ff7773a7bcb562b87525a65e"
     },
     {
       "path": "i18n/catalog.json",
@@ -2678,8 +2678,8 @@
     },
     {
       "path": "qml/Veyra/EffectSupport.js",
-      "size": 4719,
-      "sha256": "2d77e0e7276614d232df9c3b7be0445868056908b6c8fd086677024aa6dbfa27"
+      "size": 8370,
+      "sha256": "eece3c0ec198c5f90098a34e0626b1751e709390e6d7d286824e38b3dd19e693"
     },
     {
       "path": "qml/Veyra/ExportLayout.js",
@@ -2808,8 +2808,8 @@
     },
     {
       "path": "qml/Veyra/ProPage.qml",
-      "size": 130504,
-      "sha256": "187ef4d59e077997090818ab1caccd1e5dec28f5c23d0c8be8ba60ae05c57350"
+      "size": 132191,
+      "sha256": "907d007de9a50c470678dbfa9f044a235c4e370d885c60171eec94ba000860fe"
     },
     {
       "path": "qml/Veyra/ProPerfOrb.qml",
@@ -8973,8 +8973,8 @@
     },
     {
       "path": "tests/radeon/EffectSupportIntegration.test.cjs",
-      "size": 5979,
-      "sha256": "3c4168d3bd80f66fcc5038ab809a2fb50e344c9f98e369d588b5d9a15d04de67"
+      "size": 13956,
+      "sha256": "2a02436ba7d78882129dc9516052b1b3a45e91b2fd52c7de40970b5f071a96a1"
     },
     {
       "path": "tests/radeon/FgProbeSupport.h",
@@ -9020,6 +9020,11 @@
       "path": "tests/radeon/NrModelAssetsTests.cpp",
       "size": 10521,
       "sha256": "d2501c57b82f257847b85827c6a6b0c48e9d27a0b9cef57075e418f70143d9c0"
+    },
+    {
+      "path": "tests/radeon/NrModelConnectionSmoke.qml",
+      "size": 5894,
+      "sha256": "f2ba0c5fe14f3d320e853b0f52aeea67ab3c0a456a2e26c235c3a3c965852092"
     },
     {
       "path": "tests/radeon/NrStackQualityProbe.cpp",
@@ -10445,22 +10450,22 @@
   "sourceOnlyPublicationEdits": [
     {
       "path": "README.md",
-      "sha256": "78672f7b5aa7364e65745a3039c715177baa193af6f8af2a8e406d73d0fcb8e8",
+      "sha256": "0f99520eb1f46defac719a43afe2dfa34069ad3b93a8862cea469bebe309157e",
       "reason": "Publisher public documentation"
     },
     {
       "path": "README-RADEON.ko.md",
-      "sha256": "78672f7b5aa7364e65745a3039c715177baa193af6f8af2a8e406d73d0fcb8e8",
+      "sha256": "0f99520eb1f46defac719a43afe2dfa34069ad3b93a8862cea469bebe309157e",
       "reason": "Publisher public documentation"
     },
     {
       "path": "RELEASE-RADEON.ko.md",
-      "sha256": "25873f031179f71f3e774c9b53148ca7a68fcc23591a48e3d52e57eca51a5342",
+      "sha256": "144a2035236ea6c7621daa6b506ea29c6eba940253fa7696c01e0a529167afce",
       "reason": "Publisher public documentation"
     },
     {
       "path": "docs/radeon/BUILD_PUBLIC.md",
-      "sha256": "293f6c4c85f12bfa2c678e4e0af43f9cbad41bb2700d6b5a6963d5cde9347702",
+      "sha256": "92abcaafd7a6c30518a43a5f7bf1220bef7c2657ee6db4bdfa4a66490a5c3dd1",
       "reason": "Publisher public documentation"
     },
     {
@@ -10536,10 +10541,9 @@
       "reason": "Historical diagnostic or archival script with a hard-coded personal machine path; not referenced by CMake"
     }
   ],
-  "compileSourceFilesVerified": 1053,
   "upstreamBaseCommit": "671f9e963db63cbd7f912caa35c4caa3e0e60f76",
   "buildArtifacts": {
-    "veyra_qml_ui.exe": "c50d90ca97c5e60606408ded9f72e1681269475768ea3aa7ba14628562c02c72",
+    "veyra_qml_ui.exe": "86d6f024730618694bc6a01d7aadfa91f16a7a2845f4724c585b4dfb1a905dc7",
     "veyra_portable_launcher.exe": "9e9c8a204db04895b97817d9d5430b5e51e63849a545abce9fef2fc7e3b62a8d",
     "veyra_update_worker.exe": "7e14d43747a86de45aae7f4fe3920dcd98739f73e3d96ad058037f374fd553c6"
   },

@@ -17,7 +17,7 @@ test('the shipped helper defines each bridge and Radeon function once', () => {
     for (const name of ['status', 'available', 'reason', 'option', 'fgBackendShortLabel',
         'radeonChoices', 'radeonHint', 'radeonText', 'radeonLabel', 'radeonMultipliers',
         'radeonEffects', 'applyRadeon', 'gpuCapabilityAvailable', 'preferredNr',
-        'gpuPresetName', 'reconcileGpu']) {
+        'gpuPresetName', 'gpuPresetState', 'activateGpuPreset', 'nrModelConnectionText', 'reconcileGpu']) {
         assert.equal(typeof support[name], 'function', name);
     }
 });
@@ -102,4 +102,138 @@ test('effect catalog and short labels describe RIFE without changing other effec
     assert.equal(support.radeonText('ANR FG / ANR FG'), 'RIFE · Radeon / RIFE · Radeon');
     assert.equal(support.radeonLabel('ANR FG · 2X'), 'RIFE · Radeon');
     assert.equal(support.radeonLabel('FSR 3.1'), 'FSR 3.1');
+});
+
+
+function presetApi() {
+    return {
+        amdNrGpu: true, uiLanguage: 'ko',
+        nrModelAssets: {managed: true, checked: true, busy: false, smallReady: false, originalReady: false},
+        effectCapabilities: {nr4: {available: false, modelAssetsMissing: true, reason: 'Original weights missing'}, anr: {available: true}},
+        nrLayers: [{index: 3, runtime: 2, intensity: 1.4}],
+        chain: [{type: 'sr', enabled: false}, {type: 'frame-generation', enabled: false}],
+        fgBackendName: 'fsr3', fgEnabled: false, nrEnabled: false, srEnabled: false,
+        calls: [],
+        chooseNrModelFolder() { this.calls.push('choose'); },
+        addEffect(type) { this.calls.push('add:' + type); },
+        setNrLayerParameter(index, key, value) { this.calls.push([index, key, value]); }
+    };
+}
+
+test('missing models connect from the main preset without changing effects, even with no Radeon layer', () => {
+    for (const layers of [[], [{index: 3, runtime: 2, intensity: 1.4}]]) {
+        const api = presetApi(); api.nrLayers = layers;
+        const before = JSON.stringify({layers: api.nrLayers, fg: api.fgBackendName, fgOn: api.fgEnabled, nrOn: api.nrEnabled, srOn: api.srEnabled});
+        const state = support.gpuPresetState(api);
+        assert.equal(state.kind, 'connect'); assert.equal(state.enabled, true);
+        assert.equal(state.label, 'NR 모델 연결'); assert.equal(state.reason, 'Original weights missing');
+        assert.equal(support.activateGpuPreset(api), true);
+        assert.deepEqual(api.calls, ['choose']);
+        assert.equal(JSON.stringify({layers: api.nrLayers, fg: api.fgBackendName, fgOn: api.fgEnabled, nrOn: api.nrEnabled, srOn: api.srEnabled}), before);
+    }
+});
+
+test('ready models restore the original preset action and retain per-layer strength', () => {
+    const api = presetApi(); api.nrLayers[0].runtime = 4;
+    api.nrModelAssets.smallReady = api.nrModelAssets.originalReady = true;
+    api.effectCapabilities.nr4 = {available: true, reason: ''};
+    const state = support.gpuPresetState(api);
+    assert.equal(state.kind, 'apply'); assert.equal(state.enabled, true);
+    assert.equal(state.label, 'Radeon NR + RIFE');
+    assert.equal(support.activateGpuPreset(api), true);
+    assert.deepEqual(api.calls, [[3, 'runtime', 4]]);
+    assert.equal(api.nrLayers[0].intensity, 1.4);
+    assert.equal(api.fgBackendName, 'anr'); assert.equal(api.fgEnabled, true);
+    assert.equal(api.nrEnabled, true); assert.equal(api.srEnabled, true);
+    assert.equal(api.srTargetIndex, 2); assert.equal(api.fgMultiplier, 2);
+});
+
+test('FG-only failure keeps its exact reason and cannot open a model picker or apply effects', () => {
+    const api = presetApi(); api.nrModelAssets.smallReady = api.nrModelAssets.originalReady = true;
+    api.effectCapabilities.nr4 = {available: true, reason: ''};
+    api.effectCapabilities.anr = {available: false, reason: 'RIFE runtime is missing: provider.dll'};
+    const state = support.gpuPresetState(api);
+    assert.equal(state.kind, 'blocked'); assert.equal(state.enabled, false);
+    assert.equal(state.reason, 'RIFE runtime is missing: provider.dll');
+    assert.equal(support.activateGpuPreset(api), false);
+    assert.deepEqual(api.calls, []); assert.equal(api.fgEnabled, false); assert.equal(api.nrEnabled, false);
+});
+
+test('a running model check blocks both connect and preset application without mutating settings', () => {
+    for (const ready of [false, true]) {
+        const api = presetApi(); api.nrModelAssets.busy = true;
+        if (ready) api.effectCapabilities.nr4 = {available: true};
+        const state = support.gpuPresetState(api);
+        assert.equal(state.kind, 'busy'); assert.equal(state.enabled, false);
+        assert.equal(support.activateGpuPreset(api), false);
+        assert.deepEqual(api.calls, []); assert.equal(api.fgBackendName, 'fsr3'); assert.equal(api.nrEnabled, false);
+    }
+});
+
+
+// Model the bridge's authoritative node list: a property switch never creates
+// a missing stage. Flat Boolean mocks would hide the actual deleted-node bug.
+function editableChainApi(amd, types) {
+    const api = presetApi();
+    api.amdNrGpu = amd;
+    api.nrModelAssets.smallReady = api.nrModelAssets.originalReady = true;
+    api.effectCapabilities = {nr4: {available: true}, nr2: {available: true}, anr: {available: true}, dlss: {available: true}};
+    api.chain = types.map((type, index) => ({type, enabled: false, runtime: 3, intensity: 1.1 + index / 10}));
+    Object.defineProperty(api, 'nrLayers', {get() {
+        return this.chain.flatMap((node, index) => node.type === 'nr' ? [{...node, index}] : []);
+    }});
+    for (const [property, type] of [['srEnabled', 'sr'], ['fgEnabled', 'frame-generation'], ['nrEnabled', 'nr']]) {
+        Object.defineProperty(api, property, {
+            get() { return !!this.chain.find(node => node.type === type && node.enabled); },
+            set(value) { const node = this.chain.find(node => node.type === type); if (node) node.enabled = value; }
+        });
+    }
+    api.addEffect = function(type) {
+        this.calls.push('add:' + type);
+        if (this.rejectAdd === type) return -1;
+        const actualType = type.endsWith('-fg') ? 'frame-generation' : type;
+        const node = {type: actualType, enabled: actualType !== 'nr', runtime: amd ? 4 : 2, intensity: 1};
+        const tail = this.chain.findIndex(item => item.type === 'frame-generation');
+        const index = actualType !== 'frame-generation' && tail >= 0 ? tail : this.chain.length;
+        this.chain.splice(index, 0, node);
+        return index;
+    };
+    api.setNrLayerParameter = function(index, key, value) {
+        this.calls.push([index, key, value]); this.chain[index][key] = value;
+    };
+    return api;
+}
+
+test('preset restores deleted SR/FG stages through validated additions on Radeon and NVIDIA', () => {
+    for (const amd of [true, false]) for (const types of [
+        ['nr', 'nr', 'nr'], ['sr', 'nr'], ['nr', 'frame-generation'], []
+    ]) {
+        const api = editableChainApi(amd, types);
+        const strengths = api.nrLayers.map(layer => layer.intensity);
+        assert.equal(support.activateGpuPreset(api), true);
+        assert.equal(api.srEnabled, true); assert.equal(api.fgEnabled, true); assert.equal(api.nrEnabled, true);
+        assert.equal(api.chain.filter(node => node.type === 'sr').length, 1);
+        assert.equal(api.chain.filter(node => node.type === 'frame-generation').length, 1);
+        assert.equal(api.chain.at(-1).type, 'frame-generation');
+        assert.equal(api.fgBackendName, amd ? 'anr' : 'dlss'); assert.equal(api.fgMultiplier, 2);
+        assert.equal(api.srTargetIndex, 2); assert.equal(api.nrLayers[0].runtime, amd ? 4 : 2);
+        if (strengths.length) assert.deepEqual(api.nrLayers.map(layer => layer.intensity), strengths);
+        const additions = api.calls.filter(call => typeof call === 'string');
+        if (!types.includes('frame-generation')) assert.ok(additions.includes('add:' + (amd ? 'anr-fg' : 'dlss-fg')));
+        const nodeCount = api.chain.length;
+        assert.equal(support.activateGpuPreset(api), true);
+        assert.equal(api.chain.length, nodeCount, 'Applying again must reuse the existing stages');
+        assert.deepEqual(api.calls.filter(call => typeof call === 'string'), additions);
+    }
+});
+
+test('preset propagates validated node-addition refusal instead of claiming a complete preset', () => {
+    for (const rejected of ['nr', 'sr', 'anr-fg']) {
+        const api = editableChainApi(true, rejected === 'nr' ? [] : ['nr']);
+        api.rejectAdd = rejected;
+        assert.equal(support.activateGpuPreset(api), false);
+        assert.equal(api.fgEnabled, false);
+        assert.equal(api.chain.some(node => node.type === (rejected === 'anr-fg' ? 'frame-generation' : rejected)), false);
+        assert.equal(api.calls.filter(call => call === 'add:' + rejected).length, 1);
+    }
 });

@@ -44,7 +44,7 @@ Earlier FSR SDR/scRGB/PQ/reset tests and the MIT runtime build are recorded in [
 
 ## Artifact checks
 
-Release gates verify the staged inventory/SHA256 values and binary/source ZIP correspondence, then start the exact extracted program in a fresh directory. The final public player must match the hash below. Profiles, local model references, private NR weights, logs, recordings and credentials are excluded. The seven README screenshots are separately provided public examples, copied unchanged; they are not the private video fixture.
+Release gates verify the staged inventory/SHA256 values and binary/source ZIP correspondence, then start the exact extracted program in a fresh directory. The original public player hash is recorded below; the NR UI rebuild hash is recorded in the addendum. Profiles, local model references, private NR weights, logs, recordings and credentials are excluded. The seven README screenshots are separately provided public examples, copied unchanged; they are not the private video fixture.
 
 ## Limits
 
@@ -58,6 +58,23 @@ Release gates verify the staged inventory/SHA256 values and binary/source ZIP co
 
 The corresponding source includes `tests/radeon/NrModelAssetsTests.cpp`, `NrStackQualityProbe.cpp` / `NrIntegrationProbe.h`, `ReleaseFirstRunSmoke.qml`, `tests/unit/LmxxfNrTests.cpp` and `tests/integration/LmxxfNrRuntimeMetadataTests.cpp`. The app driver receives model/video paths at test time; personal paths are not embedded in public source.
 
-Final tested player SHA256: `c50d90ca97c5e60606408ded9f72e1681269475768ea3aa7ba14628562c02c72`.
+Original 1.0.0 tested player SHA256: `c50d90ca97c5e60606408ded9f72e1681269475768ea3aa7ba14628562c02c72`.
 
 GPU graph probe SHA256: `56909d60ace4b1b056e7cb78eb15a6cd3022b2209f437d083d2d17ccb9b1f680`.
+
+## NR connection UI rebuild — 2026-11-27
+
+This rebuild fixes recovery from missing local models in the main UI and restores absent SR/FG stages when applying the combined preset. GPU processing algorithms and shader binaries are unchanged. The cancelled fullscreen input candidate is excluded.
+
+- Effect-support / GPU-switch regressions: 13 passed.
+- Actual app, fresh profile with zero NR layers: recovery action visible; busy state blocked; invalid-folder error recoverable; valid local folder registered; actual preset click enabled Radeon NR, RIFE 2X and 4K.
+- Actual app, legacy session with three disabled runtime-3 NR nodes and no SR/FG rows: the same recovery sequence passed; missing SR/FG rows were restored. The pre-fix failure was retained as evidence.
+- Native folder picker and live capture: the main action opened the Windows folder picker, an existing local model folder was selected, and the ready preset enabled real NR processing and RIFE generation. The fresh-profile drivers themselves use no source and do not prove inference.
+
+UI rebuild player SHA256: `86d6f024730618694bc6a01d7aadfa91f16a7a2845f4724c585b4dfb1a905dc7`.
+
+ProPage.qml SHA256: `907d007de9a50c470678dbfa9f044a235c4e370d885c60171eec94ba000860fe`.
+
+EffectSupport.js SHA256: `eece3c0ec198c5f90098a34e0626b1751e709390e6d7d286824e38b3dd19e693`.
+
+The earlier nine-case GPU matrix remains historical coverage; it was not rerun or counted as new UI-rebuild coverage. The public package continues to exclude NR weights, personal model references and user profiles. Test model paths are supplied at runtime, not embedded in public QML.

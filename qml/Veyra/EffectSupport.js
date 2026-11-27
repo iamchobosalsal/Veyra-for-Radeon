@@ -49,17 +49,24 @@ function radeonEffects(api) {
 }
 function applyRadeon(api) {
     var target = preferredNr(api)
-    if (target < 0 || !gpuCapabilityAvailable(api, api.amdNrGpu ? "anr" : "dlss")) return
-    if (!api.nrLayers.length) api.addEffect("nr")
+    if (target < 0 || !gpuCapabilityAvailable(api, api.amdNrGpu ? "anr" : "dlss")) return false
+    if (!api.nrLayers.length && api.addEffect("nr") < 0) return false
     if (api.nrLayers.length) api.setNrLayerParameter(api.nrLayers[0].index, "runtime", target)
     api.videoSrQuality = api.amdNrGpu ? 5 : 0
     api.srTargetIndex = 2
+    // Stage switches only edit existing nodes. Restore deleted preset stages
+    // through the normal capability/chain validator, without duplicating them.
+    if (!api.chain.some(function(node) { return node.type === "sr" })
+            && api.addEffect("sr") < 0) return false
     api.srEnabled = true
     api.nrEnabled = true
     api.fgBackendName = api.amdNrGpu ? "anr" : "dlss"
+    if (!api.chain.some(function(node) { return node.type === "frame-generation" })
+            && api.addEffect(api.amdNrGpu ? "anr-fg" : "dlss-fg") < 0) return false
     api.fgMotionSource = api.amdNrGpu ? 1 : 0
     api.fgMultiplier = 2
     api.fgEnabled = true
+    return true
 }
 function gpuCapabilityAvailable(api, key) { return !!(api.effectCapabilities[key] && api.effectCapabilities[key].available) }
 function preferredNr(api) {
@@ -68,6 +75,58 @@ function preferredNr(api) {
     // remains selectable in the existing per-layer menu.
     if (gpuCapabilityAvailable(api, "nr2")) return 2
     return gpuCapabilityAvailable(api, "nr3") ? 3 : -1
+}
+// A missing local model is recoverable from the main button. Runtime/hardware
+// failures still use the normal capability gate; connecting files applies no effects.
+function gpuPresetState(api) {
+    var assets = api.nrModelAssets || {}
+    var caps = api.effectCapabilities || {}
+    var ko = api.uiLanguage === "ko"
+    var label = gpuPresetName(api)
+    if (api.amdNrGpu && assets.managed && assets.busy)
+        return {kind: "busy", enabled: false, label: ko ? "NR 모델 확인 중…" : "Checking NR models…",
+                reason: ko ? "모델 파일 확인이 끝날 때까지 기다려 주세요." : "Wait for the model check to finish."}
+    if (api.amdNrGpu && assets.managed && caps.nr4 && caps.nr4.modelAssetsMissing)
+        return {kind: "connect", enabled: true, label: ko ? "NR 모델 연결" : "Connect NR models",
+                reason: caps.nr4.reason || (ko ? "기존 NR 모델 폴더를 선택하세요." : "Select your existing NR model folder.")}
+    var target = preferredNr(api)
+    if (target < 0) {
+        var nr = caps[api.amdNrGpu ? "nr4" : "nr2"] || {}
+        return {kind: "blocked", enabled: false, label: label,
+                reason: nr.reason || (ko ? "현재 GPU에서 사용할 수 있는 NR 실행 구성이 없습니다." : "No compatible NR runtime is available on this GPU.")}
+    }
+    var fg = caps[api.amdNrGpu ? "anr" : "dlss"] || {}
+    if (!fg.available)
+        return {kind: "blocked", enabled: false, label: label,
+                reason: fg.reason || (ko ? "프레임 생성 실행 구성을 사용할 수 없습니다." : "The frame generation runtime is unavailable.")}
+    return {kind: "apply", enabled: true, label: label,
+            reason: ko ? "NR 화질 개선 + 4K 출력 + 선택한 GPU의 프레임 생성 2X" : "NR enhancement + 4K output + frame generation for the selected GPU"}
+}
+function activateGpuPreset(api) {
+    var state = gpuPresetState(api)
+    if (!state.enabled) return false
+    if (state.kind === "connect") api.chooseNrModelFolder()
+    else if (state.kind === "apply") return applyRadeon(api)
+    else return false
+    return true
+}
+function nrModelConnectionText(api) {
+    var assets = api.nrModelAssets || {}
+    var cap = (api.effectCapabilities || {}).nr4 || {}
+    var ko = api.uiLanguage === "ko"
+    if (assets.busy) return ko ? "모델 파일 확인 중…" : "Checking model files…"
+    var message = assets.error || ""
+    if (!message && !cap.available)
+        message = cap.reason || (ko ? "NR 모델이 연결되지 않았습니다. 기존 모델 폴더 또는 이전 Veyra 폴더를 선택하세요." : "NR models are not connected. Select an existing model folder or an old Veyra folder.")
+    if (!message) {
+        var models = []
+        if (assets.smallReady) models.push("Small")
+        if (assets.originalReady) models.push("Original")
+        message = (ko ? "모델 파일 확인됨: " : "Model files checked: ") + models.join(" / ")
+    }
+    if (assets.restartRequired)
+        message += ko ? "\n실행 중인 NR에 새 모델 폴더를 적용하려면 앱을 재시작하세요." : "\nRestart to use the new model folder in the active NR pipeline."
+    return message + (assets.directory ? "\n" + assets.directory : "")
 }
 function gpuPresetName(api) {
     return (api.amdNrGpu ? "Radeon" : (gpuCapabilityAvailable(api, "nr2") || gpuCapabilityAvailable(api, "nr3")) ? "NVIDIA" : "GPU") + (api.amdNrGpu ? " NR + RIFE" : " NR + DLSS-FG")

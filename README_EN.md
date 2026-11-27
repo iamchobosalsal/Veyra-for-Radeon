@@ -9,3 +9,7 @@ Image quality and performance depend on the GPU, settings, model, and source. Th
 This is not an official release of Veyra, AMD, or NVIDIA. Original credits and licenses are preserved.
 
 [Package contents, setup, limitations, and credits (Korean)](README-RADEON.ko.md) · [Download this fork](https://github.com/iamchobosalsal/Veyra-for-Radeon/releases/tag/v1.0.0) · [Upstream Veyra](https://github.com/Likely7/Veyra-NRVideo)
+
+## NR connection UI fix — 2026-11-27
+
+When models are missing, the top action now reads **Connect NR models** and opens the local folder picker. Select an existing model folder, then click **Radeon NR + RIFE** to apply the preset. The NR settings also expose model connection and recheck actions even with no layers. Applying the preset restores missing SR/FG stages while preserving existing NR strengths. Re-download the updated 1.0.0 ZIP if you have the earlier package; model weights are still supplied separately.

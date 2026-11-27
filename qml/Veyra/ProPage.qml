@@ -351,10 +351,11 @@ VPage {
 
             VButton {
                 objectName: "radeon-nr-fg-preset"
-                text: Support.gpuPresetName(veyra)
-                enabled: Support.preferredNr(veyra) >= 0 && Support.gpuCapabilityAvailable(veyra, veyra.amdNrGpu ? "anr" : "dlss")
-                tip: veyra.uiLanguage === "ko" ? "NR 화질 개선 + 4K 출력 + 선택한 GPU의 프레임 생성 2X" : "NR enhancement + 4K output + frame generation for the selected GPU"
-                onClicked: Support.applyRadeon(veyra)
+                readonly property var actionState: Support.gpuPresetState(veyra)
+                text: actionState.label
+                enabled: actionState.enabled
+                tip: actionState.reason
+                onClicked: Support.activateGpuPreset(veyra)
             }
 
             // View toggle. Choosing 节点 asks first, because switching rebuilds the
@@ -1562,7 +1563,10 @@ VPage {
                             switchAvailable: Support.available(veyra, "nr")
                             switchObjectName: "list-nr-master"
                             on: veyra.nrAnyEnabled
-                            bypassed: veyra.nrLayers.length > 0 && !veyra.nrAnyEnabled
+                            readonly property bool modelConnectionNeeded: veyra.nrModelAssets.managed
+                                && (!veyra.nrModelAssets.checked || (!veyra.nrModelAssets.smallReady && !veyra.nrModelAssets.originalReady))
+                            // Recovery controls must stay readable when NR is bypassed.
+                            bypassed: veyra.nrLayers.length > 0 && !veyra.nrAnyEnabled && !modelConnectionNeeded
                             onToggled: on => veyra.setAllNrEnabled(on)
                             open: true
                             headerActions: [
@@ -1581,6 +1585,29 @@ VPage {
                                     }
                                 }
                             ]
+                            VRow {
+                                objectName: "list-nr-model-connection"
+                                visible: veyra.nrModelAssets.managed
+                                label: veyra.uiLanguage === "ko" ? "로컬 NR 모델" : qsTr("Local NR models")
+                                hintBelow: true
+                                hint: Support.nrModelConnectionText(veyra)
+                                Row {
+                                    spacing: 6
+                                    VButton {
+                                        objectName: "list-nr-model-connect"
+                                        enabled: !veyra.nrModelAssets.busy
+                                        text: veyra.uiLanguage === "ko" ? "폴더 선택" : qsTr("Select folder")
+                                        onClicked: veyra.chooseNrModelFolder()
+                                    }
+                                    VButton {
+                                        objectName: "list-nr-model-recheck"
+                                        enabled: !veyra.nrModelAssets.busy
+                                        ghost: true
+                                        text: veyra.uiLanguage === "ko" ? "다시 확인" : qsTr("Recheck")
+                                        onClicked: veyra.refreshNrModelAssets()
+                                    }
+                                }
+                            }
                             Repeater {
                                 // Numeric count preserves delegates during slider edits.
                                 model: veyra.nrLayers.length
