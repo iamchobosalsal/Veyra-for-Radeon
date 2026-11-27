@@ -44,7 +44,7 @@ Earlier FSR SDR/scRGB/PQ/reset tests and the MIT runtime build are recorded in [
 
 ## Artifact checks
 
-Release gates verify the staged inventory/SHA256 values and binary/source ZIP correspondence, then start the exact extracted program in a fresh directory. The original public player hash is recorded below; the NR UI rebuild hash is recorded in the addendum. Profiles, local model references, private NR weights, logs, recordings and credentials are excluded. The seven README screenshots are separately provided public examples, copied unchanged; they are not the private video fixture.
+Release gates verify the staged inventory/SHA256 values and binary/source ZIP correspondence, then start the exact extracted program in a fresh directory. The original public player hash is recorded below; the NR UI rebuild hash is recorded in the addendum. That earlier UI-only package excluded NR weights as well as profiles, local model references, logs, recordings and credentials; the standalone packaging correction below supersedes its model inventory. The seven README screenshots are separately provided public examples, copied unchanged; they are not the private video fixture.
 
 ## Limits
 
@@ -52,7 +52,7 @@ Release gates verify the staged inventory/SHA256 values and binary/source ZIP co
 - Layer stacking can soften detail. README screenshots use separate captures and unrecorded strengths; they are illustrative rather than a controlled benchmark.
 - No physical input-latency measurement or universal Radeon/driver/capture-device compatibility claim is made.
 - Diagnostic process durations include initialization/readback; they are not per-frame latency or sustainable FPS.
-- NR weights remain separately required. Metadata readiness does not guarantee arbitrary supplied weights will execute correctly.
+- The earlier UI-only package required separate NR weights. The standalone packaging correction bundles the pinned upstream assets; metadata readiness alone still does not prove successful GPU inference.
 
 ## Reproduction sources
 
@@ -77,4 +77,12 @@ ProPage.qml SHA256: `907d007de9a50c470678dbfa9f044a235c4e370d885c60171eec94ba000
 
 EffectSupport.js SHA256: `eece3c0ec198c5f90098a34e0626b1751e709390e6d7d286824e38b3dd19e693`.
 
-The earlier nine-case GPU matrix remains historical coverage; it was not rerun or counted as new UI-rebuild coverage. The public package continues to exclude NR weights, personal model references and user profiles. Test model paths are supplied at runtime, not embedded in public QML.
+The earlier nine-case GPU matrix remains historical coverage; it was not rerun or counted as new UI-rebuild coverage. That UI-only package continued to exclude NR weights, personal model references and user profiles. Test model paths are supplied at runtime, not embedded in public QML.
+
+## Standalone NR packaging correction — 2026-11-27
+
+The UI-only repair did not make a fresh download self-contained: its successful live check used an existing external model folder. This packaging correction includes the upstream Small/Original models and shared assets under the versioned `runtime/amd-nr/assets/` directory. The player and NR runtime algorithms are unchanged. See [asset provenance](NR_BUNDLE_PROVENANCE.md).
+
+The release validation must extract the actual ZIP with no saved model reference, confirm automatic Small/Original readiness, move that installation into a path containing Korean characters and spaces, repeat with a fresh profile, and process real frames through Small NR at internal 1920×1080 / output 3840×2160. Calling model import or pointing an environment variable at the development model directory does not satisfy this check. The resulting receipts are bound to the final ZIP and binary hashes.
+
+Package verification compares every bundled asset with the pinned upstream archive, allowing only the documented `DLSS5_STYLE=0` configuration adjustment. User profiles, external references and diagnostics are excluded. AMD's installed display driver supplies the system HIP runtime.

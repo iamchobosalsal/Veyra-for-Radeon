@@ -4,6 +4,8 @@ Public manual prereleases keep the updater disabled and still require the comple
 public redistribution and corresponding-source audit. They cannot be signed as updates.
 No downloads, key generation, GitHub upload, or changes to installed applications.
 Publisher review is an input, not a legal conclusion made by this script.
+An explicitly declared upstream NR model bundle records byte provenance separately;
+that provenance is not a model license or a redistribution-rights conclusion.
 """
 import argparse
 import base64
@@ -41,6 +43,13 @@ FSR_RUNTIME_FILES = (
 )
 OPEN_FSR_RUNTIME_FILE = "runtime_local/amd/fidelityfx/amd_fidelityfx_dx12.dll"
 ALL_FSR_RUNTIME_FILES = (*FSR_RUNTIME_FILES, OPEN_FSR_RUNTIME_FILE)
+NR_MODEL_PREFIX = "runtime/amd-nr/assets/"
+NR_MODEL_ARCHIVE_URL = "https://github.com/Likely7/Veyra-NRVideo/releases/download/v2.2.0/Veyra-2.2.0-AMD-win64-portable.zip"
+NR_MODEL_ARCHIVE_SHA256 = "b383cd4fbc94a6b84e32f36bc8c2758b4c03216c2bd0a2560e3112ba520d6905"
+NR_STYLE_CONFIG_PATH = NR_MODEL_PREFIX + "native-game-flags.txt"
+NR_STYLE_ORIGINAL_SHA256 = "830255fba2ead4d86351c669c0a2cf92e6c99b325bc8296d5946f42dc9a6a97b"
+NR_STYLE_ZERO_SHA256 = "33f7647696e0d2b63827e1d1667b4be10be822a2110a55d044963c26cc6a2418"
+NR_MODEL_SUFFIXES = {".f16", ".f32", ".i32", ".hsaco", ".cso", ".hlsl", ".hlsli", ".txt", ".json"}
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 RESERVED = re.compile(r"(?:CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)", re.IGNORECASE)
 
@@ -76,10 +85,13 @@ def safe_path(name):
                     and not RESERVED.match(p) for p in name.split("/")))
 
 
-def check_path(name):
+def check_path(name, nr_models=()):
     if not safe_path(name):
         raise ValueError(f"unsafe package path: {name}")
     lower = name.lower()
+    if lower in nr_models:
+        check_nr_model_path(name)
+        return
     if lower in ALL_FSR_RUNTIME_FILES:
         return
     parts = lower.split("/")
@@ -89,6 +101,61 @@ def check_path(name):
             or parts[-1] in {"neuralhub.ini", "nvcuda.dll", "nvapi64.dll", "amdhip64_7.dll", "winmm.dll"}
             or (parts[-1].startswith("nvngx") and lower != PROVIDER)):
         raise ValueError(f"private or unapproved runtime path: {name}")
+
+
+def check_nr_model_path(name):
+    # This exception is reachable only through the exact model manifest set.
+    lower = name.lower() if isinstance(name, str) else ""
+    parts = lower.split("/")
+    if (not safe_path(name) or not name.startswith(NR_MODEL_PREFIX)
+            or set(parts) & {"runtime_local", "logs", "cache", ".cache", "shader-cache", ".git",
+                              "profile", "profiles", "userdata", "user-data", "user-data-2.0.0", "capture-profile", "media"}
+            or parts[-1] in {"nr-assets-path.txt", "neuralhub.ini"}
+            or (Path(lower).suffix not in NR_MODEL_SUFFIXES and parts[-1] != "sha256sums")):
+        raise ValueError(f"private or unapproved NR model path: {name}")
+
+
+def validate_nr_models(audit, rows):
+    model_rows = {r["path"].lower(): r for r in rows if r["path"].lower().startswith(NR_MODEL_PREFIX)}
+    declaration = audit.get("optionalComponents", {}).get("nrModels")
+    if declaration is None or declaration == {"bundled": False}:
+        return {}  # Existing private-path rejection remains in force below.
+    if not isinstance(declaration, dict) or declaration.get("bundled") is not True:
+        raise ValueError("invalid optional NR model bundle declaration")
+    if declaration.get("sourceArchive") != {"url": NR_MODEL_ARCHIVE_URL, "sha256": NR_MODEL_ARCHIVE_SHA256}:
+        raise ValueError("NR models require the exact official HTTPS archive and SHA256 provenance")
+    files = declaration.get("files")
+    if not isinstance(files, list) or not 0 < len(files) <= 30000:
+        raise ValueError("NR models require an explicit nonempty file manifest")
+    declared = {}
+    for row in files:
+        if (not isinstance(row, dict) or set(row) != {"path", "size", "sha256"}
+                or type(row["size"]) is not int or row["size"] < 0
+                or not isinstance(row["sha256"], str) or not SHA.fullmatch(row["sha256"])):
+            raise ValueError("invalid NR model manifest identity")
+        check_nr_model_path(row["path"])
+        key = row["path"].lower()
+        if key in declared:
+            raise ValueError("duplicate NR model manifest path")
+        declared[key] = row
+    if set(declared) != set(model_rows):
+        raise ValueError("NR model manifest files differ from audited model rows")
+    provenance = {"kind": "official-archive-byte-match", "sourceArchiveSha256": NR_MODEL_ARCHIVE_SHA256}
+    for key, identity in declared.items():
+        row = model_rows[key]
+        if any(row.get(field) != identity[field] for field in ("path", "size", "sha256")):
+            raise ValueError("NR model manifest identity differs from audit")
+        expected = provenance
+        if key == NR_STYLE_CONFIG_PATH:
+            if row["sha256"] == NR_STYLE_ZERO_SHA256:
+                expected = dict(kind="official-archive-derived-config", sourceArchiveSha256=NR_MODEL_ARCHIVE_SHA256,
+                                originalSha256=NR_STYLE_ORIGINAL_SHA256, modified=True,
+                                transformation="DLSS5_STYLE=1 -> DLSS5_STYLE=0")
+            elif row["sha256"] != NR_STYLE_ORIGINAL_SHA256:
+                raise ValueError("NR model style config differs from both pinned configurations")
+        if row.get("provenance") != expected:
+            raise ValueError("NR model row requires explicit official archive byte provenance or its pinned style derivation")
+    return declared
 
 
 def trust_policy(trust, review, manual_prerelease=False):
@@ -163,8 +230,9 @@ def validate_audit(audit, version, source, review):
     validate_optional_components(audit, names)
     if len(set(names)) != len(rows) or not required <= set(names) or WORKER in names or "package-manifest.json" in names:
         raise ValueError("duplicate, reserved or missing audited stage files")
+    nr_models = validate_nr_models(audit, rows)
     for row in rows:
-        check_path(row["path"])
+        check_path(row["path"], nr_models)
         if not SHA.fullmatch(row.get("sha256", "")) or not isinstance(row.get("size"), int) or row["size"] < 0:
             raise ValueError("invalid file hash/size")
         if row["path"].lower() == PROVIDER and audit.get("radeonSourceBuiltProviderSha256") != row["sha256"]:
@@ -173,7 +241,7 @@ def validate_audit(audit, version, source, review):
                 and audit["optionalComponents"]["fidelityfx"]["sha256"] != row["sha256"]):
             raise ValueError("source-built FidelityFX provenance does not match the audited DLL hash")
         rights = row.get("redistribution", {})
-        if not review and (rights.get("reviewed") is not True or not rights.get("license") or not rights.get("origin")):
+        if not review and row["path"].lower() not in nr_models and (rights.get("reviewed") is not True or not rights.get("license") or not rights.get("origin")):
             raise ValueError(f"file has no recorded redistribution review: {row['path']}")
     built = audit.get("buildArtifacts", {})
     if set(built) != {"Veyra.exe", WORKER} or any(not SHA.fullmatch(item.get("sha256", ""))
@@ -228,10 +296,13 @@ def wrap(stage, build, output, version, source=None, review=False, manual_prerel
         bundle.writestr(folder + "package-manifest.json", encode(audit))
         for row in rows:
             bundle.write(stage / row["path"], folder + row["path"])
+        bundled_nr = audit.get("optionalComponents", {}).get("nrModels", {}).get("bundled") is True
+        nr_notice = ("Bundled NR model files are found automatically inside versions/" + version + "/runtime/amd-nr/assets.\n"
+                     "Settings remain in runtime_local outside versions.\n" if bundled_nr else
+                     "Settings and locally supplied NR assets remain in runtime_local outside versions.\n")
         bundle.writestr(prefix + "/START-HERE.txt", "Veyra for Radeon — unofficial community fork.\n"
                         "Start Veyra.exe. Install only reviewed Radeon releases, never upstream Veyra over this folder.\n"
-                        "Settings and locally supplied NR assets remain in runtime_local outside versions.\n"
-                        "To return to the retained previous version: Veyra.exe --rollback\n"
+                        + nr_notice + "To return to the retained previous version: Veyra.exe --rollback\n"
                         "Based on Likely7/Veyra-NRVideo. Not an official Veyra or AMD release.\n")
         if audit.get("packageVariant") == "core":
             bundle.writestr(prefix + "/CORE-PACKAGE.txt", CORE_NOTICE)

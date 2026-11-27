@@ -1,5 +1,6 @@
 """Isolated package boundary tests; no real runtime, model, key or network used."""
 import base64
+import copy
 import hashlib
 import importlib.util
 import json
@@ -446,6 +447,137 @@ class PackageTests(unittest.TestCase):
         self.rewrite_zip(path, remove_provenance)
         with self.assertRaisesRegex(ValueError, "provenance"):
             pack.inspect_bundle(path, "1.0.0", self.source)
+
+    def bundle_model_fixture(self):
+        rows = [self.add_file("runtime/amd-nr/assets/small/model.f16", b"fixture model"),
+                self.add_file("runtime/amd-nr/assets/HIP/gfx1201/kernel.hsaco", b"fixture kernel")]
+        for row in rows:
+            row.pop("redistribution")
+            row["provenance"] = dict(kind="official-archive-byte-match", sourceArchiveSha256=pack.NR_MODEL_ARCHIVE_SHA256)
+        self.audit.setdefault("optionalComponents", {})["nrModels"] = dict(
+            bundled=True, sourceArchive=dict(url=pack.NR_MODEL_ARCHIVE_URL, sha256=pack.NR_MODEL_ARCHIVE_SHA256),
+            files=[{key: row[key] for key in ("path", "size", "sha256")} for row in rows])
+        return rows
+
+    def test_bundled_nr_round_trip_records_provenance_without_model_license_claim(self):
+        rows = self.bundle_model_fixture()
+        self.trust.update(repository="", publicKey="", installEnabled=False)
+        path = self.wrap(manual_prerelease=True)
+        pack.inspect_bundle(path, "1.0.0", self.source, manual_prerelease=True)
+        with zipfile.ZipFile(path) as archive:
+            prefix = pack.stem("1.0.0")
+            notice = archive.read(prefix + "/START-HERE.txt").decode()
+            self.assertIn("Bundled NR model files are found automatically", notice)
+            self.assertNotIn("locally supplied NR assets", notice)
+            manifest = json.loads(archive.read(prefix + "/versions/1.0.0/package-manifest.json"))
+            models = [r for r in manifest["files"] if r["path"].startswith(pack.NR_MODEL_PREFIX)]
+            self.assertEqual(len(models), 2)
+            self.assertTrue(all("redistribution" not in r for r in models))
+            for row in rows:
+                self.assertEqual(archive.read(prefix + "/versions/1.0.0/" + row["path"]), (self.stage / row["path"]).read_bytes())
+
+    def test_bundled_nr_requires_official_https_archive_and_pinned_digest(self):
+        self.bundle_model_fixture()
+        declaration = self.audit["optionalComponents"]["nrModels"]
+        original = declaration["sourceArchive"]
+        for changed in (dict(original, url=original["url"].replace("https:", "http:")),
+                        dict(original, url=original["url"].replace("Likely7", "another-owner")),
+                        dict(original, url=original["url"] + "?redirect=elsewhere"),
+                        dict(original, sha256="00" * 32), {}, None):
+            declaration["sourceArchive"] = changed
+            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "official HTTPS archive"):
+                pack.validate_audit(self.audit, "1.0.0", self.source, False)
+        declaration["sourceArchive"] = original
+
+    def test_bundled_nr_manifest_and_audit_must_match_exactly(self):
+        self.bundle_model_fixture()
+        original = copy.deepcopy(self.audit)
+        changes = [lambda a: a["optionalComponents"]["nrModels"]["files"].pop(),
+                   lambda a: a["optionalComponents"]["nrModels"]["files"].append(copy.deepcopy(a["optionalComponents"]["nrModels"]["files"][0])),
+                   lambda a: a["optionalComponents"]["nrModels"]["files"][0].update(size=999),
+                   lambda a: a["optionalComponents"]["nrModels"]["files"][0].update(sha256="00" * 32),
+                   lambda a: a["files"][-1].pop("provenance"),
+                   lambda a: a["files"][-1]["provenance"].update(sourceArchiveSha256="00" * 32)]
+        for change in changes:
+            audit = copy.deepcopy(original);change(audit)
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "NR model"):
+                pack.validate_audit(audit, "1.0.0", self.source, False)
+
+    def test_bundled_nr_exception_rejects_private_paths_even_in_manifest(self):
+        self.bundle_model_fixture()
+        for name in ("runtime/amd-nr/assets/logs/player.txt", "runtime/amd-nr/assets/cache/key.json",
+                     "runtime/amd-nr/assets/shader-cache/shader.cso", "runtime/amd-nr/assets/nr-assets-path.txt",
+                     "runtime/amd-nr/assets/private.pem", "runtime/amd-nr/assets/unapproved.dll",
+                     "runtime_local/radeon/nr-assets/model.f16", "other/model.f32", "runtime/amd-nr/assets/../escape.f16"):
+            audit = copy.deepcopy(self.audit)
+            audit["files"][-1]["path"] = name
+            audit["optionalComponents"]["nrModels"]["files"][-1]["path"] = name
+            with self.subTest(path=name), self.assertRaisesRegex(ValueError, "private or unapproved NR model"):
+                pack.validate_audit(audit, "1.0.0", self.source, False)
+
+    def test_bundled_nr_keeps_other_file_review_and_private_path_gates(self):
+        self.bundle_model_fixture()
+        rights = self.audit["files"][0].pop("redistribution")
+        with self.assertRaisesRegex(ValueError, "no recorded redistribution"):
+            pack.validate_audit(self.audit, "1.0.0", self.source, False)
+        self.audit["files"][0]["redistribution"] = rights
+        self.add_file("elsewhere/model.f16")
+        with self.assertRaisesRegex(ValueError, "private or unapproved runtime"):
+            pack.validate_audit(self.audit, "1.0.0", self.source, False)
+
+    def test_bundled_nr_stage_and_archive_bytes_must_match(self):
+        rows = self.bundle_model_fixture()
+        model = self.stage / rows[0]["path"];original = model.read_bytes()
+        model.write_bytes(b"changed model")
+        with self.assertRaisesRegex(ValueError, "stage file differs"):
+            self.wrap()
+        model.write_bytes(original)
+        archive = self.wrap()
+        self.rewrite_zip(archive, lambda name, data: b"tampered" if name.endswith(rows[0]["path"]) else data)
+        with self.assertRaisesRegex(ValueError, "archived bytes differ"):
+            pack.inspect_bundle(archive, "1.0.0", self.source)
+
+    def test_bundled_nr_without_explicit_declaration_is_still_forbidden(self):
+        self.bundle_model_fixture()
+        self.audit["optionalComponents"].pop("nrModels")
+        for declaration in (None, {"bundled": False}):
+            if declaration is not None:self.audit["optionalComponents"]["nrModels"] = declaration
+            with self.subTest(declaration=declaration), self.assertRaisesRegex(ValueError, "private or unapproved runtime"):
+                pack.validate_audit(self.audit, "1.0.0", self.source, False)
+
+    def test_bundled_nr_style_derivation_is_limited_to_exact_config_identity(self):
+        self.bundle_model_fixture()
+        row = self.add_file(pack.NR_STYLE_CONFIG_PATH, b"synthetic metadata-only fixture")
+        row.pop("redistribution")
+        row["sha256"] = pack.NR_STYLE_ZERO_SHA256
+        row["provenance"] = dict(kind="official-archive-derived-config", sourceArchiveSha256=pack.NR_MODEL_ARCHIVE_SHA256,
+                                 originalSha256=pack.NR_STYLE_ORIGINAL_SHA256, modified=True,
+                                 transformation="DLSS5_STYLE=1 -> DLSS5_STYLE=0")
+        self.audit["optionalComponents"]["nrModels"]["files"].append({k:row[k] for k in ("path","size","sha256")})
+        # This is only descriptor validation. wrap() still hashes actual stage bytes.
+        pack.validate_audit(self.audit, "1.0.0", self.source, False)
+        for field, value in (("originalSha256", "00"*32), ("modified", False),
+                             ("transformation", "arbitrary config edit"), ("kind", "official-archive-byte-match")):
+            altered = copy.deepcopy(self.audit);altered["files"][-1]["provenance"][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "provenance"):
+                pack.validate_audit(altered, "1.0.0", self.source, False)
+        for field, value in (("path", pack.NR_MODEL_PREFIX+"other-config.txt"), ("sha256", "00"*32)):
+            altered = copy.deepcopy(self.audit)
+            altered["files"][-1][field] = value
+            altered["optionalComponents"]["nrModels"]["files"][-1][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                pack.validate_audit(altered, "1.0.0", self.source, False)
+
+    def test_bundled_nr_archive_cannot_drop_byte_provenance(self):
+        self.bundle_model_fixture();archive = self.wrap()
+        def drop_provenance(name, data):
+            if not name.endswith("package-manifest.json"):return data
+            audit = json.loads(data)
+            audit["files"][-1].pop("provenance")
+            return pack.encode(audit)
+        self.rewrite_zip(archive, drop_provenance)
+        with self.assertRaisesRegex(ValueError, "official archive byte provenance"):
+            pack.inspect_bundle(archive, "1.0.0", self.source)
 
     def test_existing_artifact_is_never_overwritten(self):
         path = self.wrap()
